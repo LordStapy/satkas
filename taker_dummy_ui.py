@@ -5,6 +5,7 @@ import time
 import math
 import curses
 import logging
+logging.basicConfig(filename='taker_dummy_ui.log', filemode='w', level=logging.DEBUG)
 
 from dotenv import load_dotenv
 
@@ -12,8 +13,6 @@ from swapper.taker import Taker
 from p2p.taker_p2p_node import TakerNode
 
 load_dotenv()
-logging.basicConfig(filename='taker_dummy_ui.log', filemode='w', level=logging.DEBUG)
-
 
 if len(sys.argv) == 1:
     output_address = input('Insert a kaspa address for the redeem/refund of swaps: ').strip()
