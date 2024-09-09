@@ -81,7 +81,7 @@ class Node:
         logger.info(f"Initiated node with node_key {self.swapnode.node_pubkey.hex()}")
 
     async def status_check(self, infinite_loop=False):
-        logger.debug('Inside status check')
+        # logger.debug('Inside status check')
         if infinite_loop:
             await asyncio.sleep(5)
         while True:
@@ -171,12 +171,13 @@ class Node:
             logger.error(f"handle_close_connection got Index error while deleting outbound peers: {to_remove}")
             pass
 
-        key, transport = to_remove[0]
-        if key in self.server_list.keys():
-            del self.server_list[key]
-        if key in self.client_list.keys():
-            del self.client_list[key]
-        logger.debug(f"[{self.short_pubkey}] Removed peer {key}")
+        if to_remove:
+            key, transport = to_remove[0]
+            if key in self.server_list.keys():
+                del self.server_list[key]
+            if key in self.client_list.keys():
+                del self.client_list[key]
+            logger.debug(f"[{self.short_pubkey}] Removed peer {key}")
 
     async def send_hello(self, transport):
         if self.__class__.__name__ == 'MakerNode':
