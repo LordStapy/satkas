@@ -143,11 +143,11 @@ async def load_offers(swap_type, p2p_price):
     results = await asyncio.gather(*tasks)
 
     offers = []
-    for endpoint, (res, valid_until) in zip(endpoints, results):
-        # if len(endpoint) > 25:
-        #     endpoint = f"{endpoint[:7]}...{endpoint[-13:]}"
-        # offers.append(f"{res[0]:.2f} {res[1]:>6d} {res[2]:>7d}        {endpoint}")
-        offers.append((res[0], res[1], res[2], endpoint))
+    for endpoint, result in zip(endpoints, results):
+        if result:
+            res, valid_until = result
+            offers.append((res[0], res[1], res[2], endpoint))
+    offers = list(sorted(offers, key=lambda x: x[0], reverse=(True if swap_type == 'kas2sat' else False)))
     return offers
 
 
