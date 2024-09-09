@@ -111,7 +111,7 @@ class AtomicSwap:
         secret_hash = decoded.payment_hash
         self.sat_amount = int(decoded.amount_msat / 1000)
         self.timelock = (int(date) + (int(expiry))) * 1000
-        self.secret_hash = secret_hash
+        self.secret_hash = bytes.fromhex(secret_hash)
 
     def get_utxos_by_address(self, address):
         kaspactl = os.getenv('KASPACTL', 'kaspactl')
