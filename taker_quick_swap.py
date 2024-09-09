@@ -32,8 +32,13 @@ if not output_address.startswith('kaspa'):
 taker = Taker(output_address=output_address)
 taker.maker_endpoint = endpoint
 
-swap_type = input('\n[1] sat2kas\n[2] kas2swap\nSelect swap type 1/2: ')
-swap_type = 'sat2kas' if swap_type == '1' else 'kas2sat'
+swap_type = input('\n[1] sat2kas\n[2] kas2sat\nSelect swap type [1/2]: ')
+if swap_type == '1':
+    swap_type = 'sat2kas'
+elif swap_type == '2':
+    swap_type = 'kas2sat'
+else:
+    sys.exit()
 
 loop = asyncio.get_event_loop()
 offers, valid_until = loop.run_until_complete(taker.query_price(swap_type))
@@ -52,7 +57,7 @@ if kas_amount == '':
     kas_amount = min_amt
 else:
     kas_amount = int(kas_amount)
-    if not (min_amt < kas_amount < max_amt):
+    if not (min_amt <= kas_amount <= max_amt):
         print(f"Wrong amount, should be {min_amt} < amount < {max_amt}")
         sys.exit(1)
 if swap_type == 'sat2kas':

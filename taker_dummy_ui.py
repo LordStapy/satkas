@@ -44,6 +44,11 @@ async def draw_amount_selection_page(stdscr, swap_type, offer):
     curses.cbreak()
     stdscr.nodelay(True)
     price, min_amt, max_amt, endpoint = offer
+    if not (min_amt <= amount <= max_amt):
+        stdscr.addstr(3, 1, f"Amount not in range {min_amt}-{max_amt}")
+        stdscr.refresh()
+        await asyncio.sleep(2)
+        return
     logging.info(f"Price: {price}, min-max: {min_amt}-{max_amt}, endpoint: {endpoint}")
     price = float(price)
     p2p_price = math.floor(price) if swap_type == 'kas2sat' else math.ceil(price)
@@ -67,6 +72,7 @@ async def draw_amount_selection_page(stdscr, swap_type, offer):
             stdscr.addstr(3, 1, 'Offer accepted')
             stdscr.addstr(5, 1, ' ' * 60)
             stdscr.addstr(5, 1, 'Press ESC to go back')
+            # the == True below is needed, don't remove
             swap_result = 'completed!' if swap_result == True else swap_result
             stdscr.addstr(9, 1, f"Swap completed/failed: {swap_result}")
             stdscr.addstr(10, 1, 'Check logs for more details')
@@ -161,10 +167,11 @@ async def offers_screen(stdscr, swap_type, p2p_price):
     stdscr.refresh()
 
     offers = await load_offers(swap_type, p2p_price)
+    offers_len = len(offers)
     stdscr.clear()
     stdscr.refresh()
 
-    offers_box = curses.newwin(len(offers) + 2, 60, 3, 1)
+    offers_box = curses.newwin(offers_len + 2, 60, 3, 1)
     offers_box.box()
 
     selected_position = 1
@@ -196,6 +203,15 @@ async def offers_screen(stdscr, swap_type, p2p_price):
             return
         elif x == ord('r'):
             offers = await load_offers(swap_type, p2p_price)
+            if len(offers) != offers_len:
+                offers_len = len(offers)
+                stdscr.clear()
+                stdscr.refresh()
+                offers_box = curses.newwin(offers_len + 2, 60, 3, 1)
+                offers_box.box()
+                selected_position = 1
+                stdscr.addstr(1, 10, swap_type)
+                stdscr.addstr(2, 3, 'price    min-max amount      endpoint')
         elif x == curses.ERR:
             await asyncio.sleep(0.1)
 

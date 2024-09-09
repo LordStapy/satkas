@@ -254,7 +254,7 @@ class Taker(Counterparty):
                 except Exception as e:
                     logger.error(e, exc_info=True)
                     # data = {'error': 'something went wrong'}
-                if not self.verify_signature(data):
+                if not data.get('error') and not self.verify_signature(data):
                     data['error'] = 'Signature verification failed'
                 return data
 
