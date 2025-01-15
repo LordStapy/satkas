@@ -230,7 +230,11 @@ class Node:
             self.server_list[k] = None
             res = await self.connect_to_peer(host, int(port))
             if not res:
-                del self.server_list[k]
+                try:
+                    del self.server_list[k]
+                except KeyError:
+                    # item was already deleted
+                    pass
                 continue
             connected_servers[k] = self.server_list[k]
             logger.debug(f"[{self.short_pubkey}] - Connected to server: {k}")
