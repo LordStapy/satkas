@@ -26,6 +26,7 @@ class Swap(BaseModel):
     p2sh_address = CharField(default='')
     status = CharField(default='INIT')  # INIT / PENDING / COMPLETED / REFUNDED
     # ToDo: add txid field for redeem/refund tx
+    # ToDo: add remote_pubkey to store the counterparty public key
 
 
 class WalletModel(BaseModel):
