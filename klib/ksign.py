@@ -129,12 +129,12 @@ def get_output_hash(tx, idx, hash_type, reused_values):
 
 
 def get_payload_hash(tx, reused_values):
-    if tx.subnetwork_id == Subnetworks.subnetwork_id_native:
+    if tx.subnetwork_id == Subnetworks.subnetwork_id_native and not tx.payload:
         return bytes(32)
 
     if reused_values.payload_hash is None:
         hash_writer = new_transaction_signing_hash_writer()
-        hash_data(hash_writer, tx.payload, 'raw_bytes')
+        hash_data(hash_writer, tx.payload, 'bytes')
         reused_values.payload_hash = hash_writer.digest()
 
     return reused_values.payload_hash
