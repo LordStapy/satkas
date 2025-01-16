@@ -80,8 +80,10 @@ OP_DATA75 = b'\x4b'
 OP_PUSHDATA1 = b'\x4c'  # uint8
 OP_PUSHDATA2 = b'\x4d'  # uint16
 OP_PUSHDATA4 = b'\x4e'  # uitn32
-
-OP_1 = b'\x51'
+OP_1_NEGATE = b'\x4f'
+OP_RESERVED = b'\x50'
+OP_TRUE = b'\x51'
+OP_1 = b'\x51'  # same as OP_TRUE
 OP_2 = b'\x52'
 OP_3 = b'\x53'
 OP_4 = b'\x54'
@@ -97,25 +99,108 @@ OP_13 = b'\x5d'
 OP_14 = b'\x5e'
 OP_15 = b'\x5f'
 OP_16 = b'\x60'
-
-
+OP_NOP = b'\x61'
+OP_VER = b'\x62'
 OP_IF = b'\x63'
-
+OP_NOT_IF = b'\x64'
+OP_VER_IF = b'\x65'
+OP_VER_NOT_IF = b'\x66'
 OP_ELSE = b'\x67'
 OP_ENDIF = b'\x68'
-
+OP_VERIFY = b'\x69'
+OP_RETURN = b'\x6a'
+OP_TO_ALT_STACK = b'\x6b'
+OP_FROM_ALT_STACK = b'\x6c'
+OP_2_DROP = b'\x6d'
+OP_2_DUP = b'\x6e'
+OP_3_DUP = b'\x6f'
+OP_2_OVER = b'\x70'
+OP_2_ROT = b'\x71'
+OP_2_SWAP = b'\x72'
+OP_IF_DUP = b'\x73'
+OP_DEPTH = b'\x74'
+OP_DROP = b'\x75'
 OP_DUP = b'\x76'
-
+OP_NIP = b'\x77'
+OP_OVER = b'\x78'
+OP_PICK = b'\x79'
+OP_ROLL = b'\x7a'
+OP_ROT = b'\x7b'
+OP_SWAP = b'\x7c'
+OP_TUCK = b'\x7d'
+OP_CAT = b'\x7e'  # disabled
+OP_SUB_STR = b'\x7f'  # disabled
+OP_LEFT = b'\x80'  # disabled
+OP_RIGHT = b'\x81'  # disabled !! equal to OP_1_NEGATE_VAL !!
 OP_1_NEGATE_VAL = b'\x81'
 OP_SIZE = b'\x82'
-
+OP_INVERT = b'\x83'  # disabled
+OP_AND = b'\x84'  # disabled
+OP_OR = b'\x85'  # disabled
+OP_XOR = b'\x86'  # disabled
 OP_EQUAL = b'\x87'
 OP_EQUAL_VERIFY = b'\x88'
-
+OP_RESERVED_1 = b'\x89'
+OP_RESERVED_2 = b'\x8a'
+OP_1_ADD = b'\x8b'
+OP_1_SUB = b'\x8c'
+OP_2_MUL = b'\x8d'
+OP_2_DIV = b'\x8e'
+OP_NEGATE = b'\x8f'
+OP_ABS = b'\x90'
+OP_NOT = b'\x91'
+OP_0_NOT_EQUAL = b'\x92'
+OP_ADD = b'\x93'
+OP_SUB = b'\x94'
+OP_MUL = b'\x95'  # disabled
+OP_DIV = b'\x96'  # disabled
+OP_MOD = b'\x97'  # disabled
+OP_L_SHIFT = b'\x98'  # disabled
+OP_R_SHIFT = b'\x99'  # disabled
+OP_BOOL_AND = b'\x9a'
+OP_BOOL_OR = b'\x9b'
+OP_NUM_EQUAL = b'\x9c'
+OP_NUM_EQUAL_VERIFY = b'\x9d'
+OP_NUM_NOT_EQUAL = b'\x9e'
+OP_LESS_THAN = b'\x9f'
+OP_GREATER_THAN = b'\xa0'
+OP_LESS_THAN_OR_EQUAL = b'\xa1'
+OP_GREATER_THAN_OR_EQUAL = b'\xa2'
+OP_MIN = b'\xa3'
+OP_MAX = b'\xa4'
+OP_WITHIN = b'\xa5'
+OP_UNKNOWN_166 = b'\xa6'  # INVALID
+OP_UNKNOWN_167 = b'\xa7'  # INVALID
 OP_SHA256 = b'\xa8'
-
+OP_CHECK_MULTI_SIG_ECDSA = b'\xa9'
 OP_BLAKE2B = b'\xaa'
-
+OP_CHECK_SIG_ECDSA = b'\xab'
 OP_CHECK_SIG = b'\xac'
-
+OP_CHECK_SIG_VERIFY = b'\xad'
+OP_CHECK_MULTI_SIG = b'\xae'
+OP_CHECK_MULTI_SIG_VERIFY = b'\xaf'
 OP_CHECK_LOCK_TIME_VERIFY = b'\xb0'
+OP_CHECK_SEQUENCE_VERIFY = b'\xb1'
+# KIP-10 opcodes
+# Transaction level
+OP_TX_VERSION = b'\xb2'
+OP_TX_INPUT_COUNT = b'\xb3'
+OP_TX_OUTPUT_COUNT = b'\xb4'
+OP_TX_LOCK_TIME = b'\xb5'
+OP_TX_SUBNET_ID = b'\xb6'
+OP_TX_GAS = b'\xb7'
+OP_TX_PAYLOAD = b'\xb8'
+# Input related
+OP_TX_INPUT_INDEX = b'\xb9'
+OP_OUTPOINT_TX_ID = b'\xba'
+OP_OUTPOINT_INDEX = b'\xbb'
+OP_INPUT_SCRIPT_SIG = b'\xbc'
+OP_TX_INPUT_SEQ = b'\xbd'
+# UTXO related
+OP_TX_INPUT_AMOUNT = b'\xbe'
+OP_TX_INPUT_SPK = b'\xbf'
+OP_TX_INPUT_BLOCK_DAA_SCORE = b'\xc0'
+OP_TX_INPUT_IS_COINBASE = b'\xc1'
+# Output related
+OP_TX_OUTPUT_AMOUNT = b'\xc2'
+OP_TX_OUTPUT_SPK = b'\xc3'

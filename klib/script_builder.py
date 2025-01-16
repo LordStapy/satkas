@@ -54,6 +54,18 @@ class ScriptBuilder:
             res += b'\x00' * (4 - res_len)
         self.add_raw_data(res)
 
+    def add_i64(self, value):
+        # warning, this is probably wrong
+        if value == 0:
+            self.add_op(OP_0)
+            return
+        if value == -1 or 1 <= value <= 16:
+            self.add_op(bytes([int.from_bytes(OP_1, 'little') - 1 + value]))
+            return
+        valb = struct.pack('<q', value)
+        res = valb.rstrip(b'\x00')
+        self.add_raw_data(res)
+
 
 
 
