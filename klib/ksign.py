@@ -23,10 +23,16 @@ blockDomain = "BlockHash"
 proofOfWorkDomain = "ProofOfWorkHash"
 heavyHashDomain = "HeavyHash"
 merkleBranchDomain = "MerkleBranchHash"
+personalMessageSigningHash = "PersonalMessageSigningHash"
 
 
 def new_transaction_signing_hash_writer() -> hashlib:
     key = bytes(transactionSigningDomain, 'utf-8')
+    return hashlib.blake2b(key=key, digest_size=32)
+
+
+def new_message_signing_hash_writer() -> hashlib:
+    key = bytes(personalMessageSigningHash, 'utf-8')
     return hashlib.blake2b(key=key, digest_size=32)
 
 
