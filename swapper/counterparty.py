@@ -12,7 +12,7 @@ from bip44 import Wallet
 # from dotenv import load_dotenv
 
 from klib.kaddress import p2pk_address
-from klib.ksign import sign_hash, verify_signature
+from klib.ksign import new_message_signing_hash_writer, sign_hash, verify_signature
 
 # load_dotenv()
 
@@ -206,15 +206,36 @@ class Counterparty:
         await asyncio.sleep(0.5)
         stdout, stderr = await proc.communicate()
         # ToDo: handle error or slow response
-        logger.info(f"stdout: {stdout.decode().strip()}")
-        logger.debug(f"stderr: {stderr.decode().strip()}")
+        stdout = stdout.decode().strip()
+        stderr = stderr.decode().strip()
+        logger.info(f"stdout: {stdout}")
+        logger.debug(f"stderr: {stderr}")
+        if stderr:
+            if 'Rejected transaction' in stderr and 'already spent by transaction' in stderr:
+                # retry after 3 seconds
+                logger.info('utxo spent: retrying in 3 seconds')
+                await asyncio.sleep(3)
+                await Counterparty.fund_contract_address(address, amount)
+            elif 'Insufficient funds for send' in stderr:
+                # do some checks here, then retry
+                logger.info('Not enough funds: retrying in 5 seconds')
+                await asyncio.sleep(5)
+                await Counterparty.fund_contract_address(address, amount)
+
 
     @staticmethod
-    def get_msg_hash(msg_type, payload):
-        payload_string = json.dumps(payload)
+    def get_msg_hash(msg_type, payload=None):
+        if payload is not None:
+            payload_string = json.dumps(payload, separators=(',', ':'))
+            message_to_hash = f"{msg_type}:{payload_string}"
+        else:
+            message_to_hash = f"{msg_type}"
         # logger.debug(f"msg_type = {msg_type}")
         # logger.debug(f"payload_string = {payload_string}")
-        msg_hash = hashlib.sha256(f"{msg_type}:{payload_string}".encode()).digest()
+        msg_hasher = new_message_signing_hash_writer()
+        msg_hasher.update(message_to_hash.encode())
+        # msg_hash = hashlib.sha256(f"{msg_type}:{payload_string}".encode()).digest()
+        msg_hash = msg_hasher.digest()
         return msg_hash
 
     def sign(self, msg_hash, node_key=False):
