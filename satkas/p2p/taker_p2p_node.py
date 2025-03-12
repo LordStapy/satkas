@@ -4,7 +4,7 @@ import time
 import logging
 
 try:
-    from p2p.p2p_node import Node
+    from satkas.p2p.p2p_node import Node
 except ImportError:
     from p2p_node import Node
 

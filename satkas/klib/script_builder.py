@@ -2,7 +2,7 @@
 
 import struct
 
-from .kopcodes import *
+from satkas.klib.kopcodes import *
 
 
 class ScriptBuilder:

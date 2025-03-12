@@ -5,7 +5,7 @@ import logging
 
 from dotenv import load_dotenv
 
-from swapper.atomic_swap import AtomicSwap
+from satkas.swapper.atomic_swap import AtomicSwap
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)

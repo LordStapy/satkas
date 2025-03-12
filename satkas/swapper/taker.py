@@ -9,9 +9,9 @@ from inputimeout import inputimeout, TimeoutOccurred
 from aiohttp_socks import ProxyConnector
 # from dotenv import load_dotenv
 
-from db.models import TakerWallet
-from .counterparty import Counterparty
-from .atomic_swap import AtomicSwap
+from satkas.db.models import TakerWallet
+from satkas.swapper.counterparty import Counterparty
+from satkas.swapper.atomic_swap import AtomicSwap
 
 # load_dotenv()
 

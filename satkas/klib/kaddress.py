@@ -4,7 +4,7 @@ import hashlib
 
 # from dotenv import load_dotenv
 
-from .kbech32 import encode_address, decode_address
+from satkas.klib.kbech32 import encode_address, decode_address
 
 # load_dotenv()
 

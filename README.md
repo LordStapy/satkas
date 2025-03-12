@@ -19,7 +19,7 @@ SatKas is a proof-of-concept that enables atomic swaps between Lightning BTC and
 
 Optional requirements are needed for the `taker_dummy_ui.py` script and to enhance swap speed.
 
-**Hint:** Use a dedicated wallet for testing, there's a dedicated entry in the config file. 
+**Hint:** Use a segregate wallet for testing, there's a dedicated entry in the config file. 
 
 ### How to use
 ```
@@ -28,10 +28,10 @@ cd satkas
 # start a virtual environment
 python3 -m venv venv
 source venv/bin/activate
-pip3 install -r requirements.txt
+pip3 install .
 cp example.env .env
 ```
-Edit `.env` then use one of the provided scripts to test the swap functionality:
+Edit `.env` then use one of the provided example scripts to test the swap functionality:
 #### manual_swap.py
 Perform an atomic swap with known parameters, for testing or recovering swaps after a crash.
 #### taker_quick_swap.py

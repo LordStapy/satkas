@@ -1,7 +1,7 @@
 
 
-from .script_builder import ScriptBuilder
-from .kopcodes import *
+from satkas.klib.script_builder import ScriptBuilder
+from satkas.klib.kopcodes import *
 
 
 def build_contract_script(secret_hash, pkh_receiver, timelock, pkh_sender, verbose=False):
