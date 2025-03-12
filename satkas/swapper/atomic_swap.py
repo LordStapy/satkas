@@ -9,15 +9,15 @@ import logging
 from pprint import pformat
 # from dotenv import load_dotenv
 
-from klib.kbech32 import decode_address
-from klib.kaddress import get_pubkey_hash, p2sh_address_from_script
-from klib.scripting import (build_contract_script, build_spend_script,
-                            build_contract_script_short, build_spend_script_short)
-from klib.kdatatype import (Transaction, Input, Output,
-                            OutPoint, UtxoEntry, ScriptPublicKey,
-                            SighashReusedValues, SigHashType)
-from klib.ksign import raw_tx_in_signature
-from klib.serialization import gen_rpc_transaction
+from satkas.klib.kbech32 import decode_address
+from satkas.klib.kaddress import get_pubkey_hash, p2sh_address_from_script
+from satkas.klib.scripting import (build_contract_script, build_spend_script,
+                                   build_contract_script_short, build_spend_script_short)
+from satkas.klib.kdatatype import (Transaction, Input, Output,
+                                   OutPoint, UtxoEntry, ScriptPublicKey,
+                                   SighashReusedValues, SigHashType)
+from satkas.klib.ksign import raw_tx_in_signature
+from satkas.klib.serialization import gen_rpc_transaction
 
 # load_dotenv()
 

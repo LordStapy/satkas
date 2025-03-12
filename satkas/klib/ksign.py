@@ -9,8 +9,8 @@ try:
 except ImportError:
     from .schnorr_signature import schnorr_sign, schnorr_verify
 
-from .kdatatype import (SigHashType, OutPoint, ScriptPublicKey, UtxoEntry, Input,
-                        Output, Transaction, Subnetworks, SighashReusedValues)
+from satkas.klib.kdatatype import (SigHashType, OutPoint, ScriptPublicKey, UtxoEntry, Input,
+                              Output, Transaction, Subnetworks, SighashReusedValues)
 
 logger = logging.getLogger('ksign')
 

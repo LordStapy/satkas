@@ -1,10 +1,12 @@
 .env
-__pycache__/
-venv/
 hidden_service_key
-db/satkas.db
-klib/wallet.proto
-klib/wallet_pb2.py
-swapper/maker.py
-p2p/maker_p2p_node.py
 
+__pycache__/
+satkas.egg-info/
+venv/
+
+satkas/db/satkas.db
+satkas/klib/wallet.proto
+satkas/klib/wallet_pb2.py
+satkas/swapper/maker.py
+satkas/p2p/maker_p2p_node.py

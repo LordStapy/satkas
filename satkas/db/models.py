@@ -1,11 +1,14 @@
 
 import datetime
+import os
 
 from peewee import DateTimeField, Model, CharField, BooleanField, IntegerField
 from playhouse.migrate import SqliteDatabase
 
+import satkas
 
-db = SqliteDatabase('db/satkas.db', timeout=10)
+db_path = os.path.dirname(satkas.__file__) + '/db/satkas.db'
+db = SqliteDatabase(db_path, timeout=10)
 
 
 class BaseModel(Model):

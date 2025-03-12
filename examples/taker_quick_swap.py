@@ -5,7 +5,7 @@ import time
 
 from dotenv import load_dotenv
 
-from swapper.taker import Taker
+from satkas.swapper.taker import Taker
 
 load_dotenv()
 
