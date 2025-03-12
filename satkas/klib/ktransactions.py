@@ -1,10 +1,10 @@
 
-from klib.kbech32 import decode_address
-from klib.script_builder import ScriptBuilder
-from klib.kdatatype import *
-from klib.kopcodes import *
-from klib.ksign import raw_tx_in_signature
-from utils.kaspa_cmd_operations import get_utxos_by_address, broadcast_transaction
+from satkas.klib.kbech32 import decode_address
+from satkas.klib.script_builder import ScriptBuilder
+from satkas.klib.kdatatype import *
+from satkas.klib.kopcodes import *
+from satkas.klib.ksign import raw_tx_in_signature
+from satkas.utils.kaspa_cmd_operations import get_utxos_by_address, broadcast_transaction
 
 
 def select_utxos(address, amount=0, fee=0):
