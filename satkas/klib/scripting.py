@@ -189,6 +189,42 @@ def build_kip10_borrower_spend_script(signature, script, is_owner=True, borrower
         payload.add_raw_data(borrower_pubkey)
         payload.add_op(OP_0)
     payload.add_raw_data(script)
+
+    return payload.script
+
+
+def build_kip10_additive_threshold_script(owner_pubkey, threshold_sompi):
+    payload = ScriptBuilder()
+    payload.add_op(OP_IF)
+    payload.add_raw_data(owner_pubkey)
+    payload.add_op(OP_CHECK_SIG)
+    payload.add_op(OP_ELSE)
+    payload.add_op(OP_TX_INPUT_INDEX)
+    payload.add_op(OP_TX_INPUT_SPK)
+    payload.add_op(OP_TX_INPUT_INDEX)
+    payload.add_op(OP_TX_OUTPUT_SPK)
+    payload.add_op(OP_EQUAL_VERIFY)
+    payload.add_op(OP_TX_INPUT_INDEX)
+    payload.add_op(OP_TX_OUTPUT_AMOUNT)
+    payload.add_i64(threshold_sompi)
+    payload.add_op(OP_SUB)
+    payload.add_op(OP_TX_INPUT_INDEX)
+    payload.add_op(OP_TX_INPUT_AMOUNT)
+    payload.add_op(OP_GREATER_THAN_OR_EQUAL)
+    payload.add_op(OP_ENDIF)
+
+    return payload.script
+
+
+def build_kip10_threshold_spend_script(script, signature=None):
+    payload = ScriptBuilder()
+    if signature:
+        payload.add_raw_data(signature)
+        payload.add_op(OP_1)
+    else:
+        payload.add_op(OP_0)
+    payload.add_raw_data(script)
+
     return payload.script
 
 
