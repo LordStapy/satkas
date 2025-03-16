@@ -28,12 +28,14 @@ class Counterparty:
             wallet_db_table=None,
             keep_unlocked=False,
             wallet_index=1,
+            wallet_passwd=None,
             swap_endpoint=None
             ):
         self.swap_endpoint = swap_endpoint
         self.wallet_db_table = wallet_db_table
         if self.wallet_db_table is None:
             raise Exception('wallet_db_table not defined')
+        self.wallet_passwd = wallet_passwd
         self.wallet = self.wallet_db_table.get_or_none(self.wallet_db_table.id == wallet_index)
         logger.debug(f"Init wallet index {wallet_index}")
         if self.wallet is None:
@@ -54,7 +56,10 @@ class Counterparty:
     def init_wallet(self):
         logger.info('Wallet not initialized... Generating a new one!')
         logger.info('Enter password for wallet encryption (leave empty for unencrypted wallet)')
-        passphrase = getpass('Password: ').strip()
+        if self.wallet_passwd is None:
+            passphrase = getpass('Password: ').strip()
+        else:
+            passphrase = self.wallet_passwd
         mn = Mnemonic('english').generate(256)
         logger.info(f"Your wallet mnemonic is:\n{mn}")
         self.wallet = self.wallet_db_table.create(

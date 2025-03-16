@@ -23,8 +23,13 @@ logging.basicConfig(
 
 
 class Taker(Counterparty):
-    def __init__(self, output_address=None, wallet_index=1):
-        super().__init__(wallet_db_table=TakerWallet, keep_unlocked=True, wallet_index=wallet_index)
+    def __init__(self, output_address=None, wallet_index=1, wallet_passwd=None):
+        super().__init__(
+            wallet_db_table=TakerWallet,
+            keep_unlocked=True,
+            wallet_index=wallet_index,
+            wallet_passwd=wallet_passwd
+        )
         self.start_time = 0
         self.maker_endpoint = ''
         if output_address is None:
