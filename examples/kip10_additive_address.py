@@ -18,7 +18,7 @@ from satkas.klib.scripting import (
     build_kip10_threshold_spend_script
 )
 from satkas.klib.kaddress import get_script_hash, p2sh_address_from_script_hash
-from satkas.utils.kaspa_cmd_operations import get_utxos_by_address, broadcast_transaction
+from satkas.klib.kgrpc import getUtxosByAddresses, submitTransaction
 from satkas.klib.ktransactions import gen_input, gen_output, sign_p2pk_with_key
 from satkas.klib.kdatatype import Transaction, SighashReusedValues, SigHashType
 from satkas.klib.ksign import raw_tx_in_signature
@@ -93,7 +93,7 @@ if not (OWNER_PRIVKEY or BORROWER_PRIVKEY):
     print('Fill either OWNER_PRIVKEY or BORROWER_PRIVKEY to test spending functionality.')
     sys.exit(0)
 
-additive_address_utxos = get_utxos_by_address(additive_address)
+additive_address_utxos = getUtxosByAddresses(additive_address)
 if not additive_address_utxos:
     print('Additive address is empty, send some funds and run again the script to test spending')
     sys.exit(1)
@@ -144,7 +144,7 @@ if spending_scenario == 1:
     # generate rpc transaction and broadcast
     rpc_tx = gen_rpc_transaction(tx)
     print(f"RPC Transaction: {rpc_tx}")
-    res = broadcast_transaction(rpc_tx)
+    res = submitTransaction(rpc_tx)
     print(f"Owner spending result: {res}")
 
 # Borrower adds funds
@@ -159,7 +159,7 @@ elif spending_scenario == 2:
         # set sig_op_count to 2 only for secret borrower scenario
         p2sh_input.sig_op_count = b'\x02'
     # for borrower scenario, we need to supply another input
-    p2pk_utxos = get_utxos_by_address(BORROWER_ADDRESS)
+    p2pk_utxos = getUtxosByAddresses(BORROWER_ADDRESS)
     if not p2pk_utxos:
         print('Borrower doesn\'t have any utxo available, fund it first.')
         sys.exit(1)
@@ -203,5 +203,5 @@ elif spending_scenario == 2:
     # generate rpc transaction and broadcast
     rpc_tx = gen_rpc_transaction(tx)
     print(f"RPC Transaction: {rpc_tx}")
-    res = broadcast_transaction(rpc_tx)
+    res = submitTransaction(rpc_tx)
     print(f"Borrower adding result: {res}")

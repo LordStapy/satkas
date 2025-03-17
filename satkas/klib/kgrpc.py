@@ -1,7 +1,6 @@
-import os
 
+import os
 import grpc
-import json
 
 from grpc._cython.cygrpc import CompressionAlgorithm
 from google.protobuf import json_format
