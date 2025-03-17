@@ -4,12 +4,12 @@ from satkas.klib.script_builder import ScriptBuilder
 from satkas.klib.kdatatype import *
 from satkas.klib.kopcodes import *
 from satkas.klib.ksign import raw_tx_in_signature
-from satkas.utils.kaspa_cmd_operations import get_utxos_by_address, broadcast_transaction
+from satkas.klib.kgrpc import getUtxosByAddresses
 
 
 def select_utxos(address, amount=0, fee=0):
     # fetch available UTXOs
-    utxos = get_utxos_by_address(address)
+    utxos = getUtxosByAddresses(address)
     if not utxos:
         return [], 0
     selected_utxos = []
