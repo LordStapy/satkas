@@ -46,7 +46,7 @@ def gen_rpc_transaction(tx):
     rpc_tx['subnetworkId'] = '00'*20
     rpc_tx['gas'] = tx.gas
     rpc_tx['payload'] = tx.payload.hex()
-    return json.dumps(rpc_tx)
+    return rpc_tx
 
 #
 # def deserialize_partially_signed_transaction():

@@ -1,3 +1,4 @@
+import os
 
 import grpc
 import json
@@ -20,7 +21,11 @@ def serialize_rpc_request(base_req, command, payload=None):
     return base_req
 
 
-def run_grpc_command(rpc_requests, rpc_server='192.168.1.103:16110'):
+def run_grpc_command(rpc_requests, rpc_server=None):
+    if rpc_server is None:
+        rpc_server = os.getenv('KAS_RPC_SERVER')
+    if ':' not in rpc_server:
+        rpc_server += ':16110'
     channel = grpc.insecure_channel(
             rpc_server,
             options=[
@@ -40,36 +45,30 @@ def run_grpc_command(rpc_requests, rpc_server='192.168.1.103:16110'):
     return results
 
 
-def base_request(method_name, payload=None):
+def base_request(method_name, payload=None, **kwargs):
     base_req = KaspadRequest()
     req = getattr(base_req, f"{method_name}Request")
     serialized_req = serialize_rpc_request(base_req, req, payload)
-    results = run_grpc_command(serialized_req)
+    results = run_grpc_command(serialized_req, **kwargs)
     return results[0][f"{method_name}Response"]
 
 
-def getUtxosByAddresses(addresses=None):
+def getUtxosByAddresses(addresses=None, **kwargs):
     if isinstance(addresses, str):
         addresses = [addresses]
     payload = {'addresses': addresses}
-    return base_request('getUtxosByAddresses', payload)
+    return base_request('getUtxosByAddresses', payload, **kwargs)
 
 
-def submitTransaction(rpc_tx, allow_orphan=True):
+def submitTransaction(rpc_tx, allow_orphan=True, **kwargs):
     payload = {'transaction': rpc_tx, 'allowOrphan': allow_orphan}
-    return base_request('submitTransaction', payload)
+    return base_request('submitTransaction', payload, **kwargs)
 
 
-def getBlockDagInfo():
-    return base_request('getBlockDagInfo')
+def getBlockDagInfo(**kwargs):
+    return base_request('getBlockDagInfo', **kwargs)
 
 
 if __name__ == '__main__':
-    print(getUtxosByAddresses(['kaspa:qr2y4cg72p09fhpwfs3dxudwz5duxlx774ejwvwgvr9yf5p4a8edzdrt50e8q']))
+    print(getUtxosByAddresses('kaspa:qr2y4cg72p09fhpwfs3dxudwz5duxlx774ejwvwgvr9yf5p4a8edzdrt50e8q'))
     print(getBlockDagInfo())
-    print(submitTransaction({'a': 'b'}))
-    # cmd = KaspadRequest().getUtxosByAddressesRequest
-    # print(run_grpc_command(cmd, {'addresses': ['kaspa:qr2y4cg72p09fhpwfs3dxudwz5duxlx774ejwvwgvr9yf5p4a8edzdrt50e8q']}))
-    #
-    # cmd = KaspadRequest().getBlockDagInfoRequest
-    # print(run_grpc_command(cmd, {}))

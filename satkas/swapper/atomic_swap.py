@@ -18,6 +18,7 @@ from satkas.klib.kdatatype import (Transaction, Input, Output,
                                    SighashReusedValues, SigHashType)
 from satkas.klib.ksign import raw_tx_in_signature
 from satkas.klib.serialization import gen_rpc_transaction
+from satkas.klib.kgrpc import getUtxosByAddresses, submitTransaction
 
 # load_dotenv()
 
@@ -114,39 +115,25 @@ class AtomicSwap:
         self.secret_hash = bytes.fromhex(secret_hash)
 
     def get_utxos_by_address(self, address):
-        kaspactl = os.getenv('KASPACTL', 'kaspactl')
-        cmd = f"{kaspactl} -a -s {self.kas_rpc_server} GetUtxosByAddresses '{address}'"
-        out, err = self.run_cmd(cmd, shell=True)
-        # logger.debug(out.decode(), err.decode())
-        if err:
-            logger.error(err.decode())
-        if out:
-            out = json.loads(out.decode())
-            res = out['getUtxosByAddressesResponse']['entries']
-        else:
-            res = []
+        res = getUtxosByAddresses(address)
         return res
 
     def broadcast_transaction(self, rpc_transaction):
-        kaspactl = os.getenv('KASPACTL', 'kaspactl')
-        cmd = f"{kaspactl} -a -s {self.kas_rpc_server} SubmitTransaction '{rpc_transaction}' false"
-        out, err = self.run_cmd(cmd, shell=True)
-        try:
-            out = json.loads(out.decode())
-            if not out['submitTransactionResponse']['error']:
-                res = out['submitTransactionResponse']['transactionId']
-            else:
-                # ToDo: handle as many errors as possible here
-                logger.error('HEY!!!')
-                logger.error(out['submitTransactionResponse']['error'])
-                weird_error = 'one of the transaction sequence locks conditions was not met'
-                if weird_error in out['submitTransactionResponse']['error']['message']:
-                    logger.warning("Retrying broadcast in 3 seconds")
-                    time.sleep(3)
-                    return self.broadcast_transaction(rpc_transaction)
-                res = False
-        except json.JSONDecodeError:
-            logger.error(err.decode())
+        # kaspactl = os.getenv('KASPACTL', 'kaspactl')
+        # cmd = f"{kaspactl} -a -s {self.kas_rpc_server} SubmitTransaction '{rpc_transaction}' false"
+        # out, err = self.run_cmd(cmd, shell=True)
+        out = submitTransaction(rpc_transaction)
+        if not out['error']:
+            res = out['transactionId']
+        else:
+            # ToDo: handle as many errors as possible here
+            logger.error('HEY!!!')
+            logger.error(out['error'])
+            weird_error = 'one of the transaction sequence locks conditions was not met'
+            if weird_error in out['error']['message']:
+                logger.warning("Retrying broadcast in 3 seconds")
+                time.sleep(3)
+                return self.broadcast_transaction(rpc_transaction)
             res = False
         return res
 
