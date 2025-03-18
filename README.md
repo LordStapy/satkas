@@ -9,8 +9,6 @@ SatKas is a proof-of-concept that enables atomic swaps between Lightning BTC and
 #### Mandatory
 > kaspad
 > 
-> kaspactl
-> 
 > Tor
 #### Optional
 > lnd/lncli
