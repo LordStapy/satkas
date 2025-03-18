@@ -4,6 +4,7 @@ hidden_service_key
 __pycache__/
 satkas.egg-info/
 venv/
+build/
 
 satkas/db/satkas.db
 satkas/klib/wallet.proto
