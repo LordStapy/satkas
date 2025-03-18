@@ -247,10 +247,16 @@ class Taker(Counterparty):
             'signature': signature.hex()
         }
         logger.debug(req_msg)
-        connector = ProxyConnector.from_url('socks5://127.0.0.1:9050', rdns=True)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            if not endpoint.startswith('http') and endpoint.endswith('onion'):
+        if endpoint.endswith('onion'):
+            connector = ProxyConnector.from_url('socks5://127.0.0.1:9050', rdns=True)
+            if not endpoint.startswith('http'):
                 endpoint = f"http://{endpoint}"
+        else:
+            connector = None
+            # enforce https for clearnet endpoint
+            if not endpoint.startswith('https'):
+                endpoint = f"https://{endpoint}"
+        async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(endpoint, data=json.dumps(req_msg).encode()) as res:
                 response = await res.text()
                 logger.debug(f"Got response: {response}")
