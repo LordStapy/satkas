@@ -100,13 +100,15 @@ class AtomicSwap:
         self.secret_hash = bytes.fromhex(out['payment_hash'])
         return out
 
-    def internal_ln_decode(self):
+    def internal_ln_decode(self, invoice=None):
         logger.debug('Using internal ln decoder')
+        if invoice is None:
+            invoice = self.invoice
         # if 'lightning-payencode-master' not in sys.path:
         #     sys.path.append('lightning-payencode-master')
         # from lnaddr import lndecode
         from bolt11.decode import decode as lndecode
-        decoded = lndecode(self.invoice)
+        decoded = lndecode(invoice)
         date = decoded.date
         expiry = decoded.expiry
         secret_hash = decoded.payment_hash
@@ -119,9 +121,12 @@ class AtomicSwap:
         return res
 
     def broadcast_transaction(self, rpc_transaction):
+<<<<<<< HEAD
         # kaspactl = os.getenv('KASPACTL', 'kaspactl')
         # cmd = f"{kaspactl} -a -s {self.kas_rpc_server} SubmitTransaction '{rpc_transaction}' false"
         # out, err = self.run_cmd(cmd, shell=True)
+=======
+>>>>>>> main
         out = submitTransaction(rpc_transaction)
         if not out['error']:
             res = out['transactionId']
