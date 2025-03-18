@@ -2,10 +2,6 @@
 import os
 import grpc
 
-<<<<<<< HEAD
-from grpc._cython.cygrpc import CompressionAlgorithm
-=======
->>>>>>> main
 from google.protobuf import json_format
 
 from satkas.klib.messages_pb2_grpc import RPCStub
@@ -26,26 +22,15 @@ def serialize_rpc_request(base_req, command, payload=None):
 def run_grpc_command(rpc_requests, rpc_server=None):
     if rpc_server is None:
         rpc_server = os.getenv('KAS_RPC_SERVER')
-    if ':' not in rpc_server:
-<<<<<<< HEAD
-=======
         # if port is no specified, defaults to mainnet
->>>>>>> main
         rpc_server += ':16110'
     channel = grpc.insecure_channel(
             rpc_server,
             options=[
                 ('grpc.max_send_message_length', -1),
-<<<<<<< HEAD
-                ('grpc.max_receive_message_length', (1024**2)*4),
-                ('grpc.default_compression_algorithm', CompressionAlgorithm.gzip),
-            ]
-                )
-=======
                 ('grpc.max_receive_message_length', (1024**2)*4)
             ]
-    )
->>>>>>> main
+                )
     stub = RPCStub(channel)
     if not isinstance(rpc_requests, list):
         rpc_requests = [rpc_requests]
@@ -83,8 +68,4 @@ def getBlockDagInfo(**kwargs):
 
 if __name__ == '__main__':
     print(getUtxosByAddresses('kaspa:qr2y4cg72p09fhpwfs3dxudwz5duxlx774ejwvwgvr9yf5p4a8edzdrt50e8q'))
-<<<<<<< HEAD
     print(getBlockDagInfo())
-=======
-    print(getBlockDagInfo())
->>>>>>> main

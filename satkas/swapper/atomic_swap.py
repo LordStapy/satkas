@@ -121,12 +121,6 @@ class AtomicSwap:
         return res
 
     def broadcast_transaction(self, rpc_transaction):
-<<<<<<< HEAD
-        # kaspactl = os.getenv('KASPACTL', 'kaspactl')
-        # cmd = f"{kaspactl} -a -s {self.kas_rpc_server} SubmitTransaction '{rpc_transaction}' false"
-        # out, err = self.run_cmd(cmd, shell=True)
-=======
->>>>>>> main
         out = submitTransaction(rpc_transaction)
         if not out['error']:
             res = out['transactionId']
