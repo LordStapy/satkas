@@ -1,9 +1,11 @@
 
 import os
+import ssl
 import time
 import json
 import aiohttp
 import logging
+import certifi
 
 from inputimeout import inputimeout, TimeoutOccurred
 from aiohttp_socks import ProxyConnector
@@ -252,8 +254,9 @@ class Taker(Counterparty):
             if not endpoint.startswith('http'):
                 endpoint = f"http://{endpoint}"
         else:
-            connector = None
             # enforce https for clearnet endpoint
+            ssl_context = ssl.create_default_context(cadata=certifi.where())
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
             if not endpoint.startswith('https'):
                 endpoint = f"https://{endpoint}"
         async with aiohttp.ClientSession(connector=connector) as session:
