@@ -255,7 +255,7 @@ class Taker(Counterparty):
                 endpoint = f"http://{endpoint}"
         else:
             # enforce https for clearnet endpoint
-            ssl_context = ssl.create_default_context(cadata=certifi.where())
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
             connector = aiohttp.TCPConnector(ssl=ssl_context)
             if not endpoint.startswith('https'):
                 endpoint = f"https://{endpoint}"
