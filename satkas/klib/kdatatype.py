@@ -23,7 +23,7 @@ class SigHashType:
 @dataclass
 class OutPoint:
     tx_id: str
-    index: int
+    index: int = 0
 
 
 @dataclass
@@ -37,7 +37,7 @@ class UtxoEntry:
     amount: int
     script_public_key: ScriptPublicKey
     block_daa_score: int
-    is_coinbase: bool
+    is_coinbase: bool = False
 
 
 @dataclass
