@@ -118,11 +118,13 @@ class AtomicSwap:
 
     def get_utxos_by_address(self, address):
         res = getUtxosByAddresses(address)
+        res = res.get('entries', [])
+        logger.info(res)
         return res
 
     def broadcast_transaction(self, rpc_transaction):
         out = submitTransaction(rpc_transaction)
-        if not out['error']:
+        if not out.get('error'):
             res = out['transactionId']
         else:
             # ToDo: handle as many errors as possible here
@@ -223,18 +225,18 @@ class AtomicSwap:
         tx_inputs = []
         for utxo in self.utxos:
             _outpoint = utxo['outpoint']
-            outpoint = OutPoint(_outpoint['transactionId'], int(_outpoint['index']))
+            outpoint = OutPoint(_outpoint['transactionId'], int(_outpoint.get('index', 0)))
             _utxo_entry = utxo['utxoEntry']
             _script_public_key = _utxo_entry['scriptPublicKey']
             amount = int(_utxo_entry['amount'])
             utxo_entry = UtxoEntry(
                 amount,
                 ScriptPublicKey(
-                    int(_script_public_key['version']),
+                    int(_script_public_key.get('version', 0)),
                     bytes.fromhex(_script_public_key['scriptPublicKey'])
                 ),
                 int(_utxo_entry['blockDaaScore']),
-                bool(_utxo_entry['isCoinbase'])
+                bool(_utxo_entry.get('isCoinbase', False))
             )
             tx_input = Input(outpoint, utxo_entry, 1)
             tx_inputs.append(tx_input)
@@ -268,7 +270,7 @@ class AtomicSwap:
         # Print final tx and broadcast
         rpc_tx = gen_rpc_transaction(self.transaction)
         logger.debug(f"Finalized transaction, ready to broadcast:")
-        logger.debug(pformat(json.loads(rpc_tx)))
+        logger.debug(pformat(rpc_tx))
         tx_id = self.broadcast_transaction(rpc_tx)
         if tx_id:
             logger.debug(f"txid: {tx_id}")
