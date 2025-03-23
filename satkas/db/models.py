@@ -27,7 +27,7 @@ class Swap(BaseModel):
     receiver_address = CharField(default='')
     contract = CharField(default='')
     p2sh_address = CharField(default='')
-    status = CharField(default='INIT')  # INIT / PENDING / COMPLETED / REFUNDED
+    status = CharField(default='INIT')  # INIT / PENDING / COMPLETED / REFUNDED / EXPIRED
     # ToDo: add txid field for redeem/refund tx
     # ToDo: add remote_pubkey to store the counterparty public key
 
