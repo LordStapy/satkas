@@ -181,6 +181,8 @@ class AtomicSwap:
                     return False
         total = sum([int(utxo['utxoEntry']['amount']) for utxo in self.utxos]) / 1e8
         # logger.debug(f"Found {len(self.utxos)} UTXOs totaling {total} KAS")
+        if min_amount and total < min_amount:
+            return False
         return total
 
     async def async_check_utxo(self, address=None, min_amount=0, timeout=True):
@@ -206,6 +208,8 @@ class AtomicSwap:
                     return False
         total = sum([int(utxo['utxoEntry']['amount']) for utxo in self.utxos]) / 1e8
         # logger.debug(f"Found {len(self.utxos)} UTXOs totaling {total} KAS")
+        if min_amount and total < min_amount:
+            return False
         return total
 
     def spend_contract(self, secret=None, short_script=False):
