@@ -217,11 +217,11 @@ class AtomicSwap:
             # refund path
             pubkey = self.sender_pubkey
             privkey = self.sender_private_key
-            out_pubkey = self.output_pubkey if self.output_address else self.sender_pubkey
+            out_pubkey = bytes(decode_address(self.output_address)[1]) if self.output_address else self.sender_pubkey
         else:
             pubkey = self.receiver_pubkey
             privkey = self.receiver_private_key
-            out_pubkey = self.output_pubkey if self.output_address else self.receiver_pubkey
+            out_pubkey = bytes(decode_address(self.output_address)[1]) if self.output_address else self.receiver_pubkey
 
         # Spending
         # Generate input and store sum of amounts
