@@ -40,6 +40,51 @@ class Taker(Counterparty):
             self.output_address = output_address
         self.swap = None
 
+    async def init_swap(self, **kwargs):
+        if kwargs.get('receiver_address'):
+            swap_type = 'sat2kas'
+        else:
+            swap_type = 'kas2sat'
+        init_swap_payload = kwargs
+        init_swap_response = await self.ping_maker('init_swap', init_swap_payload)
+        if init_swap_response['error']:
+            logger.error(f"Error getting swap details from maker: {init_swap_response['error']}")
+            return
+        init_swap_response_payload = init_swap_response['payload']
+        if swap_type == 'sat2kas':
+            sender_address = init_swap_response_payload['sender_address']
+            receiver_address = self.address
+            ln_invoice = init_swap_response_payload['ln_invoice']
+            kas_amount = kwargs.get('kas_amount')
+            maker_info = f"{sender_address} and invoice {ln_invoice}"
+        else:
+            sender_address = self.address
+            receiver_address = init_swap_response_payload['receiver_address']
+            ln_invoice = kwargs['ln_invoice']
+            kas_amount = init_swap_response_payload['kas_amount']
+            maker_info = f"{receiver_address}"
+        maker_p2sh_address = init_swap_response_payload['p2sh_address']
+        maker_short_pubkey = f"{init_swap_response['pubkey'][:3]}...{init_swap_response['pubkey'][-3:]}"
+        logger.info(f"Swap {swap_type} accepted by maker {maker_short_pubkey} with address {maker_info}")
+        swap = AtomicSwap(
+            ln_rpc_server=os.getenv('LN_RPC_SERVER', None),
+            kas_rpc_server=os.getenv('KAS_RPC_SERVER', None),
+            invoice=ln_invoice,
+            sender_address=sender_address,
+            sender_private_key=None,
+            receiver_address=receiver_address,
+            receiver_private_key=None,
+            output_address=self.output_address
+        )
+        swap.decode_ln_invoice()
+        swap.gen_contract_address()
+        if swap.contract_address != maker_p2sh_address:
+            logger.error(f"Error, provided p2sh ({maker_p2sh_address}) differs "
+                         f"from the one we generated ({swap.contract_address})")
+            return False
+        self.swap = swap
+        return init_swap_response_payload
+
     async def sat2kas(self, kas_amount=1, p2p_price=None, price=None):
         # sat -> kas taker routine
         self.start_time = time.time()
@@ -48,40 +93,17 @@ class Taker(Counterparty):
             price = await self.query_price('sat2kas', kas_amount=kas_amount, p2p_price=p2p_price)
         # ping maker with receiver address and kas amount
         logger.info(f"Requesting sat2kas swap with receiver address {self.address}")
-        init_swap_payload = {'receiver_address': self.address, 'kas_amount': kas_amount, 'price': price}
-        init_swap_response = await self.ping_maker('init_swap', init_swap_payload)
-        # receive response (swap accepted) with ln-invoice, P2SH address and sender address
-        if init_swap_response['error']:
-            logger.error(f"Error getting swap details from maker: {init_swap_response['error']}")
-            return
 
-        init_swap_response_payload = init_swap_response['payload']
-        ln_invoice = init_swap_response_payload['ln_invoice']
-        sender_address = init_swap_response_payload['sender_address']
-        maker_p2sh_address = init_swap_response_payload['p2sh_address']
-        maker_short_pubkey = f"{init_swap_response['pubkey'][:3]}...{init_swap_response['pubkey'][-3:]}"
-        logger.info(f"Swap accepted by maker {maker_short_pubkey} with sender address {sender_address} "
-                    f"and invoice {ln_invoice}")
-
-        self.swap = AtomicSwap(
-            ln_rpc_server=os.getenv('LN_RPC_SERVER', None),
-            kas_rpc_server=os.getenv('KAS_RPC_SERVER', None),
-            invoice=ln_invoice,
-            sender_address=sender_address,
-            sender_private_key=None,
+        init_swap_response = await self.init_swap(
             receiver_address=self.address,
-            receiver_private_key=None,
-            output_address=self.output_address
+            kas_amount=kas_amount,
+            price=price
         )
-
-        # generate contract address and verify it matched the address given by maker
-        self.swap.decode_ln_invoice()
-        assert self.swap.sat_amount == int(kas_amount * price)
-        self.swap.gen_contract_address()
-        if self.swap.contract_address != maker_p2sh_address:
-            logger.error(f"Error, provided p2sh ({maker_p2sh_address}) differs "
-                         f"from the one we generated ({self.swap.contract_address})")
+        if not init_swap_response:
             return
+
+        assert self.swap.sat_amount == int(kas_amount * price)
+
         # await funding of P2SH address
         utxo_sum = self.swap.check_utxo(min_amount=kas_amount+0.001)
         if not utxo_sum:
@@ -132,40 +154,18 @@ class Taker(Counterparty):
             ln_invoice = input(f"Generate a LN invoice for {sat_amount} sats and paste it here: ").strip()
 
         logger.info(f"Requesting kas2sat swap with sender address {self.address} and invoice {ln_invoice}")
-        init_swap_payload = {'sender_address': self.address, 'ln_invoice': ln_invoice, 'price': price}
-        init_swap_response = await self.ping_maker('init_swap', init_swap_payload)
-        # receive response with receiver address, p2sh address and effective kas amount
-        if init_swap_response['error']:
-            logger.error(f"Error getting swap details from maker: {init_swap_response['error']}")
-            return False
 
-        init_swap_response_payload = init_swap_response['payload']
-        receiver_address = init_swap_response_payload['receiver_address']
-        maker_kas_amount = init_swap_response_payload['kas_amount']
+        init_swap_response = await self.init_swap(
+            sender_address=self.address,
+            ln_invoice=ln_invoice,
+            price=price
+        )
+        if not init_swap_response:
+            return
+
+        maker_kas_amount = init_swap_response.get('kas_amount')
         if maker_kas_amount > kas_amount:
             logger.error(f"KAS amount mismatch, our: {kas_amount}, maker: {maker_kas_amount}")
-            return False
-        maker_p2sh_address = init_swap_response_payload['p2sh_address']
-        maker_short_pubkey = f"{init_swap_response['pubkey'][:3]}...{init_swap_response['pubkey'][-3:]}"
-        logger.info(f"Swap accepted by maker {maker_short_pubkey} with receiver address {receiver_address}")
-
-        self.swap = AtomicSwap(
-            ln_rpc_server=os.getenv('LN_RPC_SERVER', None),
-            kas_rpc_server=os.getenv('KAS_RPC_SERVER', None),
-            invoice=ln_invoice,
-            sender_address=self.address,
-            sender_private_key=None,
-            receiver_address=receiver_address,
-            receiver_private_key=None,
-            output_address=self.output_address
-        )
-
-        # generate contract address and verify it matched the address given by maker
-        self.swap.decode_ln_invoice()
-        self.swap.gen_contract_address()
-        if self.swap.contract_address != maker_p2sh_address:
-            logger.error(f"Error, provided p2sh ({maker_p2sh_address}) differs "
-                         f"from the one we generated ({self.swap.contract_address})")
             return False
         # fund the P2SH address
         try:
