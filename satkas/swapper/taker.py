@@ -1,4 +1,4 @@
-
+import datetime
 import os
 import ssl
 import time
@@ -11,7 +11,7 @@ from inputimeout import inputimeout, TimeoutOccurred
 from aiohttp_socks import ProxyConnector
 # from dotenv import load_dotenv
 
-from satkas.db.models import TakerWallet
+from satkas.db.models import TakerWallet, Swap
 from satkas.swapper.counterparty import Counterparty
 from satkas.swapper.atomic_swap import AtomicSwap
 
@@ -39,6 +39,7 @@ class Taker(Counterparty):
         else:
             self.output_address = output_address
         self.swap = None
+        self.db_swap = None
 
     async def init_swap(self, **kwargs):
         if kwargs.get('receiver_address'):
@@ -83,6 +84,19 @@ class Taker(Counterparty):
                          f"from the one we generated ({swap.contract_address})")
             return False
         self.swap = swap
+        self.db_swap = Swap.create(
+            swap_type=swap_type,
+            side='taker',
+            remote_pubkey=init_swap_response['pubkey'],
+            ln_invoice=ln_invoice,
+            payment_hash=self.swap.secret_hash.hex(),
+            sender_address=sender_address,
+            receiver_address=receiver_address,
+            contract=self.swap.contract_script.hex(),
+            p2sh_address=self.swap.contract_address,
+            dwork_amount=int(kas_amount * 1e8),
+            status='INIT',  # INIT / PENDING / COMPLETED / REFUNDED / EXPIRED
+        )
         return init_swap_response_payload
 
     async def sat2kas(self, kas_amount=1, p2p_price=None, price=None):
@@ -107,7 +121,10 @@ class Taker(Counterparty):
         # await funding of P2SH address
         utxo_sum = self.swap.check_utxo(min_amount=kas_amount+0.001)
         if not utxo_sum:
+            self.db_set_swap_status('EXPIRED')
             return
+        else:
+            self.db_set_swap_status('PENDING', finalize_swap=False)
 
         # REDEEM PATH:
         # pay the invoice, retrieving the preimage
@@ -123,6 +140,7 @@ class Taker(Counterparty):
                 secret = inputimeout('Insert the preimage: ', timeout=timeout).strip()
             except TimeoutOccurred:
                 logger.error(f"Timeout: the invoice is expired, aborting swap")
+                self.db_set_swap_status('EXPIRED')
                 return
 
         secret_bytes = bytes.fromhex(secret)
@@ -132,6 +150,7 @@ class Taker(Counterparty):
         swap_result = self.swap.spend_contract(secret=secret_bytes)
         if swap_result:
             logger.info(f"Redeem transaction broadcasted, txid: {swap_result}")
+            self.db_set_swap_status('COMPLETED')
         self.update_address_counter()
         self.swap = None
         logger.info(f"Swap completed in {time.time() - self.start_time:.2f} seconds")
@@ -175,9 +194,12 @@ class Taker(Counterparty):
             logger.info(f"Pay to {self.swap.contract_address} a minimum of {maker_kas_amount + 0.001} KAS")
         utxo_sum = self.swap.check_utxo(min_amount=maker_kas_amount+0.001)
         if not utxo_sum:
+            self.db_set_swap_status('EXPIRED')
             return False
         else:
             swap_ongoing = True
+            self.db_set_swap_status('PENDING', finalize_swap=False)
+
         swap_result = None
         while swap_ongoing:
             # REDEEM PATH:
@@ -188,6 +210,7 @@ class Taker(Counterparty):
                 swap_ongoing = False
                 logger.info(f"Maker redeemed the contract, exiting")
                 swap_result = True
+                self.db_set_swap_status('COMPLETED')
             # REFUND PATH:
             # invoice is not paid and taker refunds after locktime expires
             if time.time() * 1000 > self.swap.timelock + 180000 and utxo_sum:
@@ -196,6 +219,7 @@ class Taker(Counterparty):
                 if swap_result:
                     logger.info(f"Refund transaction broadcasted, txid: {swap_result}")
                     swap_ongoing = False
+                    self.db_set_swap_status('REFUNDED')
         self.update_address_counter()
         self.swap = None
         logger.info(f"Swap completed in {time.time() - self.start_time:.2f} seconds")
@@ -271,6 +295,47 @@ class Taker(Counterparty):
                 if not data.get('error') and not self.verify_signature(data):
                     data['error'] = 'Signature verification failed'
                 return data
+
+    @staticmethod
+    def db_load_swaps(limit=10):
+        swaps = Swap.select().order_by(Swap.created_at.desc()).limit(limit)
+        return list(swaps)
+
+    def db_load_swap(self, swap):
+        if swap.status not in ['PENDING', 'INIT']:
+            return False
+        self.db_swap = swap
+        self.swap = AtomicSwap(
+            ln_rpc_server=os.getenv('LN_RPC_SERVER', None),
+            kas_rpc_server=os.getenv('KAS_RPC_SERVER', None),
+            invoice=swap.ln_invoice,
+            sender_address=swap.sender_address,
+            sender_private_key=None,
+            receiver_address=swap.receiver_address,
+            receiver_private_key=None,
+            output_address=self.output_address
+        )
+        self.swap.decode_ln_invoice()
+        self.swap.gen_contract_address()
+        assert self.swap.contract_address == swap.p2sh_address
+        return True
+
+    def db_set_swap_status(self, status, finalize_swap=True):
+        if self.db_swap is None:
+            return False
+        self.db_swap.status = status
+        self.db_swap.updated_on = datetime.datetime.now()
+        self.db_swap.save()
+        if finalize_swap:
+            self.db_swap = None
+        return True
+
+    def db_set_swap_txid(self, txid):
+        if self.db_swap is None:
+            return False
+        self.db_swap.txid = txid
+        self.db_swap.save()
+        return True
 
 
 async def main():
