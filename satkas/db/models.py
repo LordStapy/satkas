@@ -7,7 +7,10 @@ from playhouse.migrate import SqliteDatabase
 
 import satkas
 
-db_path = os.path.dirname(satkas.__file__) + '/db/satkas.db'
+
+db_path = os.getenv('SATKAS_DB_PATH', None)
+if db_path is None:
+    db_path = os.path.dirname(satkas.__file__) + '/db/satkas.db'
 db = SqliteDatabase(db_path, timeout=10)
 
 
