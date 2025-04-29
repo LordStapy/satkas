@@ -77,7 +77,11 @@ class Taker(Counterparty):
             receiver_private_key=None,
             output_address=self.output_address
         )
-        swap.decode_ln_invoice()
+        try:
+            swap.decode_ln_invoice()
+        except ValueError as e:
+            logger.error(e)
+            return False
         swap.gen_contract_address()
         if swap.contract_address != maker_p2sh_address:
             logger.error(f"Error, provided p2sh ({maker_p2sh_address}) differs "
