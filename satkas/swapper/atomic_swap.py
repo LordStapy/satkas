@@ -95,8 +95,12 @@ class AtomicSwap:
         else:
             logger.error(f"Error decoding invoice: {err.decode()}")
             return False
+        expiry_ts = int(out['timestamp']) + int(out['expiry'])
+        expiry_ts_max = int(time.time()) + int(os.getenv('MAX_LN_INVOICE_EXPIRY', 3600))
+        if expiry_ts > expiry_ts_max:
+            raise ValueError('Invoice expiry time is too big.')
         self.sat_amount = int(out['num_satoshis'])
-        self.timelock = (int(out['timestamp']) + (int(out['expiry']) * 1)) * 1000
+        self.timelock = expiry_ts * 1000
         self.secret_hash = bytes.fromhex(out['payment_hash'])
         return out
 
@@ -112,8 +116,12 @@ class AtomicSwap:
         date = decoded.date
         expiry = decoded.expiry
         secret_hash = decoded.payment_hash
+        expiry_ts = (int(date) + (int(expiry)))
+        expiry_ts_max = int(time.time()) + int(os.getenv('MAX_LN_INVOICE_EXPIRY', 3600))
+        if expiry_ts > expiry_ts_max:
+            raise ValueError('Invoice expiry time is too big.')
         self.sat_amount = int(decoded.amount_msat / 1000)
-        self.timelock = (int(date) + (int(expiry))) * 1000
+        self.timelock = expiry_ts * 1000
         self.secret_hash = bytes.fromhex(secret_hash)
 
     def get_utxos_by_address(self, address):
