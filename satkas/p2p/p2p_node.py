@@ -69,7 +69,7 @@ class Node:
         self.is_server = is_server
         self.server_list = {}
         self.client_list = {}
-        self.server_limit = 3
+        self.server_limit = int(os.getenv('P2P_SERVER_LIMIT', 3))
         self.loop = loop
         self.orderbook = {
             'sat2kas': {},
@@ -312,9 +312,9 @@ class Node:
 
         output = f"{'BID':^25s} | {'ASK':^25s}\n"
         output += f" {'price'}  {'amount (min-max)':^17s} |  {'price'}  {'amount (min-max)':^17s}\n"
-        for bid, ask in zip(sorted(bids, reverse=True), sorted(asks)):
-            bid_str = f"{bid:>6d} {bids[bid]:<18s}"
-            ask_str = f"{ask:>6d} {asks[ask]:<18s}"
+        for bid, ask in itertools.zip_longest(sorted(bids, reverse=True), sorted(asks), fillvalue=None):
+            bid_str = f"{bid:>6d} {bids[bid]:<18s}" if bid is not None else ' '*25
+            ask_str = f"{ask:>6d} {asks[ask]:<18s}" if ask is not None else ' '*25
             if return_bidask:
                 bid_res.append(bid_str)
                 ask_res.append(ask_str)

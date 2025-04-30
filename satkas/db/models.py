@@ -7,7 +7,10 @@ from playhouse.migrate import SqliteDatabase
 
 import satkas
 
-db_path = os.path.dirname(satkas.__file__) + '/db/satkas.db'
+
+db_path = os.getenv('SATKAS_DB_PATH', None)
+if db_path is None:
+    db_path = os.path.dirname(satkas.__file__) + '/db/satkas.db'
 db = SqliteDatabase(db_path, timeout=10)
 
 
@@ -21,15 +24,17 @@ class BaseModel(Model):
 
 class Swap(BaseModel):
     swap_type = CharField(default='')
-    ln_invoice = CharField(default='')
+    side = CharField(default='')  # maker / taker
+    remote_pubkey = CharField(default='')
+    ln_invoice = CharField(default='', unique=True)
     payment_hash = CharField(default='')
     sender_address = CharField(default='')
     receiver_address = CharField(default='')
     contract = CharField(default='')
     p2sh_address = CharField(default='')
+    dwork_amount = IntegerField(default=0)
     status = CharField(default='INIT')  # INIT / PENDING / COMPLETED / REFUNDED / EXPIRED
-    # ToDo: add txid field for redeem/refund tx
-    # ToDo: add remote_pubkey to store the counterparty public key
+    txid = CharField(default=None, null=True)
 
 
 class WalletModel(BaseModel):
