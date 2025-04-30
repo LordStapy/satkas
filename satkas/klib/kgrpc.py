@@ -67,6 +67,11 @@ def getBlockDagInfo(**kwargs):
     return base_request('getBlockDagInfo', **kwargs)
 
 
+def getUtxoReturnAddress(txid, daa, **kwargs):
+    payload = {'txid': txid, 'accepting_block_daa_score': daa}
+    return base_request('GetUtxoReturnAddress', payload, **kwargs)
+
+
 if __name__ == '__main__':
     print(getUtxosByAddresses('kaspa:qr2y4cg72p09fhpwfs3dxudwz5duxlx774ejwvwgvr9yf5p4a8edzdrt50e8q'))
     print(getBlockDagInfo())
