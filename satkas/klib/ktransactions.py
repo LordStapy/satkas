@@ -1,10 +1,15 @@
 
+import logging
+
 from satkas.klib.kbech32 import decode_address
 from satkas.klib.script_builder import ScriptBuilder
 from satkas.klib.kdatatype import *
 from satkas.klib.kopcodes import *
 from satkas.klib.ksign import raw_tx_in_signature
 from satkas.klib.kgrpc import getUtxosByAddresses
+
+
+logger = logging.getLogger('ktransactions')
 
 
 def select_utxos(address, amount=0, fee=0):
@@ -25,7 +30,7 @@ def select_utxos(address, amount=0, fee=0):
     else:
         # send all
         selected_utxos += utxos
-    print(f"Selected amount: {selected_amount / 1e8} KAS\nSelected utxos:\n{selected_utxos}")
+    logger.info(f"Selected amount: {selected_amount / 1e8} KAS\nSelected utxos:\n{selected_utxos}")
     return selected_utxos, selected_amount
 
 
@@ -57,16 +62,16 @@ def gen_output(address, amount):
     hex_payload = bytes(payload).hex()
     match version:
         case 0:
-            print(f"Destination detected as P2PK: {hex_payload}")
+            logger.debug(f"Destination detected as P2PK: {hex_payload}")
             output_spk = ScriptPublicKey(0, OP_DATA32 + payload + OP_CHECK_SIG)
         case 1:
-            print(f"Destination detected as ECDSA: {hex_payload}")
+            logger.debug(f"Destination detected as ECDSA: {hex_payload}")
             output_spk = ScriptPublicKey(0, OP_DATA33 + payload + OP_CHECK_SIG_ECDSA)
         case 8:
-            print(f"Destination detected as P2SH: {hex_payload}")
+            logger.debug(f"Destination detected as P2SH: {hex_payload}")
             output_spk = ScriptPublicKey(0, OP_BLAKE2B + OP_DATA32 + payload + OP_EQUAL)
         case _:
-            print(f"Unknown address version: {version}")
+            logger.debug(f"Unknown address version: {version}")
             return False
     return Output(amount, output_spk)
 
