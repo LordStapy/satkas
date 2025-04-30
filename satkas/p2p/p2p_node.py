@@ -69,7 +69,7 @@ class Node:
         self.is_server = is_server
         self.server_list = {}
         self.client_list = {}
-        self.server_limit = 3
+        self.server_limit = int(os.getenv('P2P_SERVER_LIMIT', 3))
         self.loop = loop
         self.orderbook = {
             'sat2kas': {},
