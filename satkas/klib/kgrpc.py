@@ -22,15 +22,16 @@ def serialize_rpc_request(base_req, command, payload=None):
 def run_grpc_command(rpc_requests, rpc_server=None):
     if rpc_server is None:
         rpc_server = os.getenv('KAS_RPC_SERVER')
+    if ':' not in rpc_server:
         # if port is no specified, defaults to mainnet
         rpc_server += ':16110'
     channel = grpc.insecure_channel(
             rpc_server,
             options=[
                 ('grpc.max_send_message_length', -1),
-                ('grpc.max_receive_message_length', (1024**2)*4)
+                ('grpc.max_receive_message_length', (1024**2)*8)
             ]
-                )
+    )
     stub = RPCStub(channel)
     if not isinstance(rpc_requests, list):
         rpc_requests = [rpc_requests]
