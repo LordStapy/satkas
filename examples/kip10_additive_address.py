@@ -31,9 +31,9 @@ BORROWER_PRIVKEY = bytes.fromhex('')
 OWNER_ADDRESS = 'kaspatest:qq8k273uwl4txhy08kxhhn6wu89r4trlnywsuw46ekchu0zauwe0wjpmx8p6s'
 BORROWER_ADDRESS = 'kaspatest:qz8xewreet0w5zkw70arfn29dtzmzt2n8dhy96yktqztc4gx7zrru087r2ywj'
 
-SPENDING_FEE = 10_000  # sompi
-BORROWER_ADDED_SOMPI = 1000  # sompi that the borrower will add to kip-10 address
-THRESHOLD = 1000  # sompi needed for threshold scenario
+SPENDING_FEE = 10_000  # dwork
+BORROWER_ADDED_DWORK = 1000  # dwork that the borrower will add to kip-10 address
+THRESHOLD = 1000  # dwork needed for threshold scenario
 
 if os.environ['KAS_NETWORK_PREFIX'] != 'kaspatest':
     print('Error! KAS_NETWORK must be set to "kaspatest" for this script, KIP10 is not yet enabled on mainnet.')
@@ -99,8 +99,8 @@ if not additive_address_utxos:
     sys.exit(1)
 
 num_utxos = len(additive_address_utxos)
-funded_amount_sompi = sum([int(u['utxoEntry']['amount']) for u in additive_address_utxos])
-funded_amount_kaspa = funded_amount_sompi / 1e8
+funded_amount_dwork = sum([int(u['utxoEntry']['amount']) for u in additive_address_utxos])
+funded_amount_kaspa = funded_amount_dwork / 1e8
 print(f"Additive address is funded with {num_utxos} utxo(s), totaling {funded_amount_kaspa} KAS\n")
 
 spending_scenario = int(input('Select spending scenario:\n'
@@ -122,7 +122,7 @@ if spending_scenario == 1:
             p2sh_input.sig_op_count = b'\x02'
         tx_inputs.append(p2sh_input)
     # withdraw to own address
-    amount = funded_amount_sompi - SPENDING_FEE
+    amount = funded_amount_dwork - SPENDING_FEE
     p2pk_output = gen_output(OWNER_ADDRESS, amount)
     tx_outputs = [p2pk_output]
 
@@ -169,11 +169,11 @@ elif spending_scenario == 2:
     tx_inputs = [p2sh_input, p2pk_input]
 
     # output and change handling
-    # add BORROWER_ADDED_SOMPI to p2sh output
-    p2sh_out_amount = int(p2sh_utxo['utxoEntry']['amount']) + BORROWER_ADDED_SOMPI
+    # add BORROWER_ADDED_DWORK to p2sh output
+    p2sh_out_amount = int(p2sh_utxo['utxoEntry']['amount']) + BORROWER_ADDED_DWORK
     p2sh_output = gen_output(additive_address, p2sh_out_amount)
-    # decrease p2pk by BORROWER_ADDED_SOMPI and SPENDING_FEE
-    p2pk_out_amount = int(p2pk_utxo['utxoEntry']['amount']) - BORROWER_ADDED_SOMPI - SPENDING_FEE
+    # decrease p2pk by BORROWER_ADDED_DWORK and SPENDING_FEE
+    p2pk_out_amount = int(p2pk_utxo['utxoEntry']['amount']) - BORROWER_ADDED_DWORK - SPENDING_FEE
     p2pk_output = gen_output(BORROWER_ADDRESS, p2pk_out_amount)
     # generate tx outputs, order matters!!
     tx_outputs = [p2sh_output, p2pk_output]

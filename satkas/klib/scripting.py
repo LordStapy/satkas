@@ -193,7 +193,7 @@ def build_kip10_borrower_spend_script(signature, script, is_owner=True, borrower
     return payload.script
 
 
-def build_kip10_additive_threshold_script(owner_pubkey, threshold_sompi):
+def build_kip10_additive_threshold_script(owner_pubkey, threshold_dwork):
     payload = ScriptBuilder()
     payload.add_op(OP_IF)
     payload.add_raw_data(owner_pubkey)
@@ -206,7 +206,7 @@ def build_kip10_additive_threshold_script(owner_pubkey, threshold_sompi):
     payload.add_op(OP_EQUAL_VERIFY)
     payload.add_op(OP_TX_INPUT_INDEX)
     payload.add_op(OP_TX_OUTPUT_AMOUNT)
-    payload.add_i64(threshold_sompi)
+    payload.add_i64(threshold_dwork)
     payload.add_op(OP_SUB)
     payload.add_op(OP_TX_INPUT_INDEX)
     payload.add_op(OP_TX_INPUT_AMOUNT)
@@ -300,7 +300,7 @@ def build_kip10_subtractive_borrower_secure_script(owner_pubkey, borrower_pubkey
 
     # last, we check that (input - threshold) is less than or equal to output
     # said differently, output is bigger (or equal) than (input - threshold)
-    # e.g. borrower is allowed to spend up to "threshold" sompi, but can also add funds to the address
+    # e.g. borrower is allowed to spend up to "threshold" dwork, but can also add funds to the address
     # we can add an extra check that output amount is bigger than lets say 0.5 KAS
     # step 10: push tx input index [idx]
     payload.add_op(OP_TX_INPUT_INDEX)

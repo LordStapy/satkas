@@ -23,8 +23,8 @@ def select_utxos(address, amount=0, fee=0):
         # select enough utxos to cover requested amount
         for utxo in utxos:
             selected_utxos.append(utxo)
-            sompi_amt = int(utxo['utxoEntry']['amount'])
-            selected_amount += sompi_amt
+            dwork_amt = int(utxo['utxoEntry']['amount'])
+            selected_amount += dwork_amt
             if selected_amount >= amount + fee:
                 break
     else:
@@ -80,12 +80,12 @@ def pay_from_address(sender_address, receiver_address, amount=0, fee=0, payload=
     # simple function that spends utxo(s) from sender address to receiver address
     # change is sent back to sender address
     # returns an unsigned transaction
-    sompi_amount = int(amount * 1e8)
+    dwork_amount = int(amount * 1e8)
     if not fee:
-        # network fee defaults to 10k sompi, or 0.0001 KAS
+        # network fee defaults to 10k dwork, or 0.0001 KAS
         fee = 10000
     # select outpoint and utxo_entry
-    selected_utxos, selected_amount = select_utxos(sender_address, sompi_amount, fee)
+    selected_utxos, selected_amount = select_utxos(sender_address, dwork_amount, fee)
 
     # Craft transaction input
     tx_inputs = []
@@ -95,11 +95,11 @@ def pay_from_address(sender_address, receiver_address, amount=0, fee=0, payload=
 
     # Craft transaction output
     tx_outputs = []
-    tx_output = gen_output(receiver_address, sompi_amount)
+    tx_output = gen_output(receiver_address, dwork_amount)
     tx_outputs.append(tx_output)
     # handle change
-    if sompi_amount + fee < selected_amount:
-        change_amount = selected_amount - sompi_amount - fee
+    if dwork_amount + fee < selected_amount:
+        change_amount = selected_amount - dwork_amount - fee
         # send the leftover to sender address
         change_output = gen_output(sender_address, change_amount)
         tx_outputs.append(change_output)
