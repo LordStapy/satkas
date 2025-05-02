@@ -128,7 +128,7 @@ class Counterparty:
         cmd = f"{lncli}"
         if ln_rpc_server := os.getenv('LN_RPC_SERVER', ''):
             cmd += f" --rpcserver {ln_rpc_server}"
-        cmd += f" addinvoice --amt {amount} --expiry 300 --memo SatKas"
+        cmd += f" addinvoice --amt {amount} --expiry {int(os.getenv('LNCLI_INVOICE_EXPIRY', 300))} --memo SatKas"
         logger.debug(f"Executing {cmd}")
         proc = await asyncio.create_subprocess_shell(
             cmd,
