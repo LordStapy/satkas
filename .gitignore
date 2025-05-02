@@ -9,5 +9,3 @@ build/
 satkas/db/satkas.db
 satkas/klib/wallet.proto
 satkas/klib/wallet_pb2.py
-satkas/swapper/maker.py
-satkas/p2p/maker_p2p_node.py
