@@ -18,7 +18,7 @@ from satkas.klib.kdatatype import (Transaction, Input, Output,
                                    SighashReusedValues, SigHashType)
 from satkas.klib.ksign import raw_tx_in_signature
 from satkas.klib.serialization import gen_rpc_transaction
-from satkas.klib.kgrpc import getUtxosByAddresses, submitTransaction
+from satkas.klib.kgrpc import getUtxosByAddresses, submitTransaction, getBlockDagInfo
 
 # load_dotenv()
 
@@ -127,7 +127,7 @@ class AtomicSwap:
     def get_utxos_by_address(self, address):
         res = getUtxosByAddresses(address)
         res = res.get('entries', [])
-        logger.info(res)
+        logger.debug(res)
         return res
 
     def broadcast_transaction(self, rpc_transaction):
@@ -219,6 +219,14 @@ class AtomicSwap:
         if min_amount and total < min_amount:
             return False
         return total
+
+    def check_daa_confirmations(self):
+        utxos = self.get_utxos_by_address(self.contract_address)
+        utxo_daa_score = max([int(u['utxoEntry']['blockDaaScore']) for u in utxos])
+        network_daa_score = int(getBlockDagInfo()['virtualDaaScore'])
+        if utxo_daa_score + int(os.getenv('MIN_DAA_CONFIRMATIONS', 15)) > network_daa_score:
+            return False
+        return True
 
     def spend_contract(self, secret=None, short_script=False):
         if secret is None:

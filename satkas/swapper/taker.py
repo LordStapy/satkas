@@ -130,6 +130,9 @@ class Taker(Counterparty):
         else:
             self.db_set_swap_status('PENDING', finalize_swap=False)
 
+        while not self.swap.check_daa_confirmations():
+            time.sleep(1)
+
         # REDEEM PATH:
         # pay the invoice, retrieving the preimage
         try:
