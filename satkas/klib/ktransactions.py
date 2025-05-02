@@ -14,7 +14,7 @@ logger = logging.getLogger('ktransactions')
 
 def select_utxos(address, amount=0, fee=0):
     # fetch available UTXOs
-    utxos = getUtxosByAddresses(address)
+    utxos = getUtxosByAddresses(address).get('entries', None)
     if not utxos:
         return [], 0
     selected_utxos = []
@@ -39,18 +39,18 @@ def gen_input(utxo):
     _outpoint = utxo['outpoint']
     outpoint = OutPoint(
         _outpoint['transactionId'],
-        _outpoint['index']
+        _outpoint.get('index', 0)
     )
     # utxo entry
     _utxo_entry = utxo['utxoEntry']
     utxo_entry = UtxoEntry(
         int(_utxo_entry['amount']),
         ScriptPublicKey(
-            _utxo_entry['scriptPublicKey']['version'],
+            _utxo_entry['scriptPublicKey'].get('version', 0),
             bytes.fromhex(_utxo_entry['scriptPublicKey']['scriptPublicKey'])
         ),
         _utxo_entry['blockDaaScore'],
-        _utxo_entry['isCoinbase']
+        _utxo_entry.get('isCoinbase', False)
     )
     return Input(outpoint, utxo_entry)
 
