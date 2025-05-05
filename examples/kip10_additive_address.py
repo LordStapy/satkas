@@ -1,14 +1,7 @@
 
-# Running this script requires the following environment variables:
-# KAS_RPC_SERVER must point to a testnet node
-# KAS_NETWORK_PREFIX must be set to "testnet"
-# the script doesn't load the .env
-# you should set these variables before running the script
-# export KAS_RPC_SERVER=host:16210
-# export KAS_NETWORK_PREFIX=testnet
-
-import os
 import sys
+
+from dotenv import load_dotenv
 
 from satkas.klib.kbech32 import decode_address
 from satkas.klib.scripting import (
@@ -25,6 +18,8 @@ from satkas.klib.ksign import raw_tx_in_signature
 from satkas.klib.serialization import gen_rpc_transaction
 
 
+load_dotenv()
+
 OWNER_PRIVKEY = bytes.fromhex('')
 BORROWER_PRIVKEY = bytes.fromhex('')
 
@@ -34,10 +29,6 @@ BORROWER_ADDRESS = 'kaspatest:qz8xewreet0w5zkw70arfn29dtzmzt2n8dhy96yktqztc4gx7z
 SPENDING_FEE = 10_000  # dwork
 BORROWER_ADDED_DWORK = 1000  # dwork that the borrower will add to kip-10 address
 THRESHOLD = 1000  # dwork needed for threshold scenario
-
-if os.environ['KAS_NETWORK_PREFIX'] != 'kaspatest':
-    print('Error! KAS_NETWORK must be set to "kaspatest" for this script, KIP10 is not yet enabled on mainnet.')
-    sys.exit(1)
 
 owner_prefix, owner_payload, owner_version = decode_address(OWNER_ADDRESS)
 owner_payload = bytes(owner_payload)

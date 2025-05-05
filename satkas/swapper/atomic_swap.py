@@ -224,7 +224,7 @@ class AtomicSwap:
         utxos = self.get_utxos_by_address(self.contract_address)
         utxo_daa_score = max([int(u['utxoEntry']['blockDaaScore']) for u in utxos])
         network_daa_score = int(getBlockDagInfo()['virtualDaaScore'])
-        if utxo_daa_score + int(os.getenv('MIN_DAA_CONFIRMATIONS', 15)) > network_daa_score:
+        if utxo_daa_score + int(os.getenv('MIN_DAA_CONFIRMATIONS', 100)) > network_daa_score:
             return False
         return True
 
