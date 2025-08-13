@@ -346,7 +346,21 @@ class Maker(Counterparty):
             output_address=self.output_address
         )
 
-        swap.decode_ln_invoice()
+        decode_out = swap.decode_ln_invoice()
+        logger.info(decode_out)
+        if swap_type == 'kas2sat':
+            cmd = os.getenv('LNCLI', 'lncli')
+            if ln_rpc_server := os.getenv('LN_RPC_SERVER', ''):
+                cmd += f" --rpcserver {ln_rpc_server}"
+            cmd += f" getinfo"
+            out, err = swap.run_cmd(cmd.split())
+            if out:
+                out = json.loads(out.decode())
+                if out['identity_pubkey'] == decode_out['destination']:
+                    logger.error('Payment to ourself, aborting...')
+                    return False
+            else:
+                logger.error(err)
         if swap.timelock / 1000 < time.time():
             # invoice is already expired, abort swap
             return False
