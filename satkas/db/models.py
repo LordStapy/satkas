@@ -26,7 +26,7 @@ class Swap(BaseModel):
     swap_type = CharField(default='')
     side = CharField(default='')  # maker / taker
     remote_pubkey = CharField(default='')
-    ln_invoice = CharField(default='', unique=True)
+    ln_invoice = CharField(default=None, unique=True, null=True)
     payment_hash = CharField(default='')
     sender_address = CharField(default='')
     receiver_address = CharField(default='')
