@@ -44,7 +44,6 @@ class MakerNode(Node):
         while True:
             if status_count == 30:
                 await self.status_check()
-                ping_count += 1
                 status_count = 0
 
             if self.swapnode.price_offers['sat2kas'].keys() != self.offers['sat2kas'].keys() or \
