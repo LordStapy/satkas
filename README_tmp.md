@@ -308,6 +308,7 @@ The proof of concept is **already live** and working on mainnet!
 3. Use one of the scripts in the examples folder to test the swap and library functionality:
     
       #### Complete Atomic Swap
+    [satkas_taker_dummy_ui.webm](https://github.com/user-attachments/assets/67ceb697-179a-4347-9f1d-77652c506e7a)
 
      Allows the user to fetch the different offers from available market makers and to perform the complete swap.
 
@@ -315,8 +316,8 @@ The proof of concept is **already live** and working on mainnet!
 
      On the first run you will be prompted to set a password for the internal wallet.
 
-     **IMPORTANT**: this requires all "optional requirements" listed above.
-     Dummy UI is made with _curses_, a basic terminal UI library already available on python for Linux.
+     **IMPORTANT**: this requires all "optional requirements" listed above, both kaspawallet daemon and LND must be already running and configured in .env file.
+     Dummy UI is made with _curses_, a basic terminal UI library already available on python for Linux (Windows users may need to install it before running the script).
 
      Run it with:
      ```
