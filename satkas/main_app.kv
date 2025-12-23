@@ -1,0 +1,110 @@
+<LoadingScreen>:
+    MDFloatLayout:
+        size_hint: 1, 1
+
+        MDLabel:
+            text: "SATKAS"
+            font_style: "Title"
+            halign: "center"
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primaryColor
+            size_hint: None, None
+            size: 200, 50
+            pos_hint: {"center_x": 0.5, "center_y": 0.6}
+
+        MDLabel:
+            text: "Initializing..."
+            font_style: "Body"
+            halign: "center"
+            theme_text_color: "Secondary"
+            size_hint: None, None
+            size: 150, 30
+            pos_hint: {"center_x": 0.5, "center_y": 0.45}
+
+        MDLinearProgressIndicator:
+            id: progress_bar
+            type: "indeterminate"
+            size_hint_x: 0.6
+            size_hint_y: None
+            height: 4
+            pos_hint: {"center_x": 0.5, "center_y": 0.35}
+
+
+<MainWidget>:
+    orientation: 'vertical'
+    
+    MDTopAppBar:
+        id: top_bar
+        theme_bg_color: "Custom"
+        #md_bg_color: app.theme_cls.primaryColor
+        id: top_bar
+        type: "small"
+        size_x: 1
+        pos_hint_y: 1
+        
+        MDTopAppBarLeadingButtonContainer:
+            MDActionTopAppBarButton:
+                icon: "menu"
+                id: menu_button
+                #theme_text_color: "Custom"
+                #text_color: "black"
+                #on_release: root.toggle_nav_drawer()
+                opacity: 0
+                disabled: True
+                on_release: nav_drawer.set_state("toggle")
+        
+        MDTopAppBarTitle:
+            id: top_bar_title
+            #theme_text_color: "Custom"
+            #text_color: "black"
+            halign: "center"
+            text: "SatKas"
+        
+        MDTopAppBarTrailingButtonContainer:
+            MDActionTopAppBarButton:
+                icon: "dots-vertical"
+                id: more_button
+                opacity: 0
+    
+    MDNavigationLayout:
+
+        MDScreenManager:
+            id: screen_manager
+
+        MDNavigationDrawer:
+            id: nav_drawer
+            drawer_type: "modal"
+            state: "close"
+            radius: 0, dp(16), dp(16), 0
+
+
+            MDNavigationDrawerMenu:
+
+                MDNavigationDrawerDivider:
+
+                MDNavigationDrawerItem:
+                    active_indicator_color: app.theme_cls.secondaryContainerColor
+                    inactive_indicator_color: app.theme_cls.secondaryContainerColor
+                    on_release: screen_manager.current = "dashboard_screen"
+                    MDNavigationDrawerItemText:
+                        text: "Dashboard"
+
+                #MDNavigationDrawerDivider:
+                #MDNavigationDrawerItem:
+                #    active_indicator_color: app.theme_cls.secondaryContainerColor
+                #    inactive_indicator_color: app.theme_cls.secondaryContainerColor
+                #    on_release: screen_manager.current = "quick_swap_screen"
+                #    MDNavigationDrawerItemText:
+                #        text: "Quick Swap"
+
+                MDNavigationDrawerDivider:
+
+                MDNavigationDrawerItem:
+                    active_indicator_color: app.theme_cls.secondaryContainerColor
+                    inactive_indicator_color: app.theme_cls.secondaryContainerColor
+                    on_release: screen_manager.current = "quick_swap_v2_screen"
+                    MDNavigationDrawerItemText:
+                        text: "Quick Swap V2"
+
+                MDNavigationDrawerDivider:
+

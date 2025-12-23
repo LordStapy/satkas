@@ -1,0 +1,90 @@
+
+<DashboardScreenDesktop>:
+    Dashboard:
+        id: dashboard
+
+<DashboardScreenTablet>:
+    Dashboard:
+        id: dashboard
+
+<DashboardScreenMobile>:
+    Dashboard:
+        id: dashboard
+        size_hint: 1,0.9
+
+
+<Dashboard@MDBoxLayout>:
+    orientation: "vertical"
+    spacing: dp(6)
+    padding: dp(6)
+    size_hint: 0.6, 0.9
+    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+    ServiceCard:
+        id: tor_service_card
+        service: app.service_manager.tor_service
+    ServiceCard:
+        id: kaspad_service_card
+        service: app.service_manager.kaspad_service
+    ServiceCard:
+        id: kaspa_wallet_service_card
+        service: app.service_manager.kaspa_wallet_service
+    ServiceCard:
+        id: ln_wallet_service_card
+        service: app.service_manager.ln_wallet_service
+    MDButton:
+        style: "outlined"
+        pos_hint: {"center_x": 0.5}
+        on_release: app.root.current = "setup_wizard"
+        MDButtonText:
+            text: "Restart Wizard"
+    Widget:
+
+
+
+<ServiceCard>:
+    style: "elevated"
+    #adaptive_height: True
+    height: dp(120)
+    padding: dp(16)
+    spacing: dp(16)
+    size_hint: 0.8, None
+    pos_hint: {"center_x": 0.5}
+    #max_height: root.height / 4
+    #service: None
+    #on_release: self.service.status()
+    MDRelativeLayout:
+        MDLabel:
+            id: service_title
+            adaptive_size: True
+            pos_hint: {"x": 0, "top": 1}
+            font_style: "Title"
+            role: "large"
+            text: root.service_name
+        MDLabel:
+            id: service_status
+            adaptive_size: True
+            pos_hint: {"x": 0, "y": 0}
+            font_style: "Body"
+            role: "large"
+            text: root.service_status_string
+        MDIconButton:
+            id: service_status_icon
+            pos_hint: {"right": 1, "top": 1}
+            allow_hover: False
+            ripple_effect: not root.service_is_enabled
+            theme_font_size: "Custom"
+            font_size: root.height / 4
+            icon: "check-circle" if (root.service_is_enabled) else "close-circle"
+            theme_icon_color: "Custom"
+            icon_color: [0,1,0,1] if (root.service_is_enabled) else [0.8,0,0,1]
+            on_release: root.enable_service() if not root.service_is_enabled else None
+            #disabled: root.service_is_enabled
+        MDIconButton:
+            id: service_switch
+            pos_hint: {"right": 1, "y": 0}
+            allow_hover: False
+            theme_font_size: "Custom"
+            font_size: root.height / 4
+            icon: "refresh"
+            on_release: root.refresh_service()

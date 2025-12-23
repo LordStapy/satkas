@@ -1,0 +1,130 @@
+<TorSetupPage>:
+    md_bg_color: app.theme_cls.backgroundColor
+
+    MDBoxLayout:
+        orientation: 'vertical'
+        spacing: dp(20)
+        padding: dp(30)
+
+        # Title and description
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(100)
+            spacing: dp(10)
+
+            MDLabel:
+                text: "Configure Tor"
+                font_style: "Headline"
+                size_hint_y: None
+                height: dp(40)
+                halign: 'center'
+
+            MDLabel:
+                text: "Tor provides network privacy and allows access to .onion services. Configure your Tor proxy connection.\n(only 127.0.0.1:9050 is currently supported)"
+                font_style: "Body"
+                size_hint_y: None
+                height: dp(50)
+                halign: 'center'
+                theme_text_color: "Secondary"
+
+        # Configuration inputs
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(150)
+            spacing: dp(15)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.6
+
+            # Host input
+            MDTextField:
+                id: host_field
+                text: root.host
+                helper_text: "Address of your Tor proxy"
+                helper_text_mode: "persistent"
+                write_tab: False
+                multiline: False
+                on_text: root.on_host_text(self.text)
+                size_hint_x: 1
+                MDTextFieldHintText:
+                    text: "Tor Host"
+
+            # Port input
+            MDTextField:
+                id: port_field
+                text: root.port
+                helper_text: "Port of your Tor proxy"
+                helper_text_mode: "on_focus"
+                write_tab: False
+                multiline: False
+                input_filter: 'int'
+                on_text: root.on_port_text(self.text)
+                size_hint_x: 1
+                MDTextFieldHintText:
+                    text: "Tor Port"
+
+        # Use defaults button
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(40)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.6
+
+            MDButton:
+                on_press: root.use_defaults()
+                pos_hint: {'center_x': 0.5}
+
+                MDButtonText:
+                    text: "Use Default Settings (127.0.0.1:9050)"
+
+        # Validation message
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(40)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.8
+
+            MDLabel:
+                id: validation_label
+                text: root.validation_message
+                halign: 'center'
+                theme_text_color: "Error" if "failed" in root.validation_message.lower() or "unable" in root.validation_message.lower() else "Primary"
+    
+        MDWidget:
+
+        # Navigation buttons
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(50)
+            spacing: dp(20)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.8
+
+            # Back button
+            MDButton:
+                size_hint: 0.3, 1
+                on_press: root.go_back()
+                md_bg_color: app.theme_cls.surfaceColor
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.onSurfaceColor
+
+                MDButtonText:
+                    text: "Back"
+
+            # Spacer
+            Widget:
+                size_hint_x: 0.4
+
+            # Validate and Continue button
+            MDButton:
+                size_hint: 0.3, 1
+                on_press: root.validate_and_continue()
+                disabled: root.is_validating
+                md_bg_color: app.theme_cls.primaryColor
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.onPrimaryColor
+
+                MDButtonText:
+                    text: "Validate & Continue"

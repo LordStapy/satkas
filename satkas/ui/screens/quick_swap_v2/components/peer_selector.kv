@@ -1,0 +1,54 @@
+#:import dp kivy.metrics.dp
+
+<PeerSelectorCard>:
+    style: "filled"
+    padding: dp(12)
+    size_hint_y: None
+    height: dp(60) if not self.is_collapsed else 0
+    opacity: 1 if not self.is_collapsed else 0
+    md_bg_color: app.theme_cls.surfaceContainerHighColor
+    
+    MDBoxLayout:
+        orientation: "horizontal"
+        spacing: dp(12)
+        on_width: root.update_display_name()
+
+        
+        MDLabel:
+            text: "Peer"
+            font_style: "Title"
+            role: "medium"
+            bold: True
+            adaptive_width: True
+            pos_hint: {"left": 0}
+        
+        MDButton:
+            id: peer_button
+            style: "outlined"
+            adaptive_width: True
+            on_release: root.show_peer_menu()
+            
+            MDButtonText:
+                text: root.display_peer_name
+                font_style: "Body"
+                role: "small"
+
+        MDWidget:
+            id: spacer
+        
+        MDIcon:
+            icon: "circle" if root.peer_status == "online" else ("circle-outline" if root.peer_status == "offline" else "sync")
+            theme_text_color: "Custom"
+            text_color: (0, 0.8, 0, 1) if root.peer_status == "online" else ((0.8, 0, 0, 1) if root.peer_status == "offline" else (1, 0.6, 0, 1))
+            size_hint: None, None
+            size: dp(16), dp(16)
+            pos_hint: {"center_y": 0.5}
+
+        
+        MDIconButton:
+            icon: "information-outline"
+            style: "standard"
+            size_hint: None, None
+            size: dp(40), dp(40)
+            on_release: root.show_peer_info()
+

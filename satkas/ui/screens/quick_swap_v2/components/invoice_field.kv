@@ -1,0 +1,103 @@
+#:import dp kivy.metrics.dp
+
+<InvoiceField>:
+    style: "filled"
+    orientation: "vertical"
+    padding: dp(12)
+    size_hint_y: None if self.is_visible else 0
+    height: 0 if not self.is_visible else self.minimum_height
+    opacity: 0 if not self.is_visible else 1
+    md_bg_color: app.theme_cls.surfaceContainerHighColor
+
+    # Title row: title, info label, checkmark icon, QR button
+    MDBoxLayout:
+        orientation: "horizontal"
+        spacing: dp(12)
+        size_hint_y: None
+        height: dp(40)
+        
+        # Title label
+        MDLabel:
+            text: root.title_label_text
+            font_style: "Title"
+            role: "medium"
+            bold: True
+            pos_hint: {"center_y": 0.5}
+            adaptive_size: True
+            #size_hint_x: None
+            #width: self.texture_size[0]
+        
+        # Status/info label
+        MDLabel:
+            id: invoice_info_label
+            text: root.info_label_text
+            font_style: "Body"
+            role: "large"
+            pos_hint: {"center_y": 0.5}
+            adaptive_size: True
+            theme_text_color: "Custom"
+            text_color: (0, 0.8, 0, 1) if root.is_invoice_validated else app.theme_cls.primaryColor
+        
+        # Checkmark icon (hidden when not validated)
+        #MDIcon:
+        #    icon: "check-circle"
+        #    size_hint_x: None
+        #    width: 0 if not root.is_invoice_validated else dp(24)
+        #    pos_hint: {"center_y": 0.5}
+        #    opacity: 1 if root.is_invoice_validated else 0
+        #    theme_icon_color: "Custom"
+        #    icon_color: (0, 0.8, 0, 1)
+        
+        # QR icon button
+        MDIconButton:
+            icon: "qrcode"
+            size_hint_x: 0 if not root.is_invoice_validated else None
+            width: 0 if not root.is_invoice_validated else dp(40)
+            pos_hint: {"center_y": 0.5}
+            opacity: 0 if not root.is_invoice_validated else 1
+            disabled: not (root.is_visible and root.invoice)
+            on_release: root.show_qr_popup()
+
+        MDWidget:
+    
+    # Buttons row (collapsible)
+    MDBoxLayout:
+        orientation: "horizontal"
+        spacing: dp(8)
+        size_hint_y: None
+        height: dp(48) if root.buttons_row_visible else 0
+        opacity: 1 if root.buttons_row_visible else 0
+        
+        # Button 1: Generate invoice
+        # Visible only if: kas2sat direction 
+        # Disabled if: invoice already set OR not visible
+        MDButton:
+            style: "filled" if not self.disabled else "outlined"
+            size_hint_x: 1 if (root.swap_direction == "kas2sat" and not root.is_ln_wallet_external) else 0
+            #width: 0 if not (root.swap_direction == "kas2sat" and not root.is_ln_wallet_external) else self.parent.width / 3 - dp(8)
+            opacity: 1 if (root.swap_direction == "kas2sat") else 0
+            #md_bg_color_disabled: app.theme_cls.secondaryContainerColor
+            disabled: bool(root.invoice) or root.is_generating or not root.is_visible or not (root.swap_direction == "kas2sat" and not root.is_ln_wallet_external)
+            on_release: root.screen.generate_invoice() if root.screen else None
+            MDButtonIcon:
+                icon: "lightning-bolt"
+                disabled_color: app.theme_cls.onSecondaryContainerColor
+            MDButtonText:
+                text: "Generate"
+                disabled_color: app.theme_cls.onSecondaryContainerColor
+        
+        # Button 2: Read LN invoice
+        # Visible only if: kas2sat direction
+        # Disabled if: invoice already set OR not visible
+        MDButton:
+            style: "outlined"
+            size_hint_x: 1 if (root.swap_direction == "kas2sat") else 0
+            #width: 0 if not (root.swap_direction == "kas2sat") else self.parent.width / 3 - dp(8)
+            opacity: 1 if (root.swap_direction == "kas2sat") else 0
+            disabled: bool(root.invoice) or not root.is_visible or not (root.swap_direction == "kas2sat")
+            on_release: root.open_invoice_input_dialog()
+            MDButtonIcon:
+                icon: "file-import"
+            MDButtonText:
+                text: "Read Invoice"
+

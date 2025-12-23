@@ -1,0 +1,22 @@
+<TabletLayout>:
+    md_bg_color: app.theme_cls.backgroundColor
+    MDBoxLayout:
+        orientation: 'horizontal'
+        spacing: 10
+        padding: 10
+        
+        MainTabletColumn:
+
+        
+        RightTabletColumn:
+
+
+<MainTabletColumn@MDBoxLayout>:
+    id: main_tablet_column
+    orientation: "vertical"
+    size_hint_x: 0.6
+
+<RightTabletColumn@MDBoxLayout>:
+    id: right_tablet_column
+    orientation: "vertical"
+    size_hint_x: 0.4

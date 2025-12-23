@@ -1,0 +1,272 @@
+<LnWalletSetupPage>:
+    md_bg_color: app.theme_cls.backgroundColor
+
+    MDBoxLayout:
+        orientation: 'vertical'
+        spacing: dp(10)
+        padding: dp(30)
+
+        # Title and description
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(70)
+            spacing: dp(10)
+
+            MDLabel:
+                text: "Configure Lightning Wallet"
+                font_style: "Headline"
+                size_hint_y: None
+                height: dp(40)
+                halign: 'center'
+
+            MDLabel:
+                text: "Choose your Lightning Network wallet for fast, low-fee payments."
+                font_style: "Body"
+                size_hint_y: None
+                height: dp(30)
+                halign: 'center'
+                theme_text_color: "Secondary"
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: dp(10)
+            size_hint_y: None
+            height: self.minimum_height
+            padding: [0, 0, 0, dp(20)]  # Add bottom padding for better scrolling
+
+            # Wallet type selection
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: dp(120)
+                spacing: dp(10)
+                pos_hint: {'center_x': 0.5}
+                size_hint_x: 0.6
+
+                MDLabel:
+                    text: "Wallet Type:"
+                    font_style: "Body"
+                    size_hint_y: None
+                    height: dp(30)
+
+                MDBoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: dp(30)
+                    spacing: dp(10)
+
+                    MDButton:
+                        size_hint_x: 0.5
+                        md_bg_color: app.theme_cls.primaryColor if root.selected_wallet_type == "external" else app.theme_cls.surfaceColor
+                        style: "filled" if root.selected_wallet_type == "external" else "outlined"
+                        theme_text_color: "Custom"
+                        on_release: root.on_wallet_type_selected("external")
+
+                        MDButtonText:
+                            text: "External"
+                            text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "external" else app.theme_cls.onSurfaceColor
+
+                    MDButton:
+                        size_hint_x: 0.5
+                        md_bg_color: app.theme_cls.primaryColor if root.selected_wallet_type == "lnbits" else app.theme_cls.surfaceColor
+                        style: "filled" if root.selected_wallet_type == "lnbits" else "outlined"
+                        theme_text_color: "Custom"
+                        on_release: root.on_wallet_type_selected("lnbits")
+
+                        MDButtonText:
+                            text: "LNBits"
+                            text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "lnbits" else app.theme_cls.onSurfaceColor
+
+                # Description of selected wallet type
+                MDLabel:
+                    id: wallet_description
+                    text: [wt['description'] for wt in root.wallet_types if wt['value'] == root.selected_wallet_type][0] if root.selected_wallet_type else ""
+                    size_hint_y: None
+                    height: dp(30)
+                    theme_text_color: "Secondary"
+
+        # Scrollable content area
+        MDScrollView:
+            #canvas:
+            #    Color:
+            #        rgba: 0,1,0,0.1
+            #    Rectangle:
+            #        pos: self.pos
+            #        size: self.size
+            size_hint: 0.6, 0.8
+            pos_hint: {"center_x": 0.5}
+            do_scroll_x: False
+            do_scroll_y: True
+            bar_width: 4
+
+            # LNBits configuration section
+            MDBoxLayout:
+                #canvas:
+                #    Color:
+                #        rgba: 0,0,1,1
+                #    Rectangle:
+                #        pos: self.pos
+                #        size: self.size
+                id: lnbits_config_section
+                orientation: 'vertical'
+                size_hint_y: None
+                height: dp(420) if root.selected_wallet_type != "external" else 0
+                spacing: dp(15)
+                padding: [dp(15), dp(20), dp(15), dp(20)]
+                pos_hint: {'center_x': 0.5}
+                size_hint_x: 1
+                md_bg_color: app.theme_cls.primaryContainerColor if root.selected_wallet_type != "external" else app.theme_cls.backgroundColor
+                opacity: 1 if root.selected_wallet_type != "external" else 0
+                disabled: root.selected_wallet_type == "external"
+
+                # Base URL
+                MDBoxLayout:
+                    size_hint_y: None
+                    height: 0 if root.selected_wallet_type != "lnbits" else dp(56)
+                    spacing: dp(15)
+                    size_hint_x: 1
+
+                    MDTextField:
+                        id: base_url_field
+                        text: root.base_url
+                        helper_text: "URL of your LNBits server (e.g., https://lnbits.example.com)"
+                        helper_text_mode: "persistent"
+                        write_tab: False
+                        multiline: False
+                        on_text: root.on_base_url_text(self.text)
+                        size_hint_x: 0.7
+                        MDTextFieldHintText:
+                            text: "LNBits Server URL"
+                    
+                    # Use fallback button (only for LNBits)
+                    MDButton:
+                        pos_hint: {"right": 1, "center_y": 0.5}
+                        size_hint_x: 0.3
+                        on_release: root.show_fallback_dialog()
+
+                        MDButtonText:
+                            text: "Use Hosted LNBits"
+
+                # Create account button (only for LNBits)
+                MDBoxLayout:
+                    id: lnbits_defaults_section
+                    size_hint_y: None
+                    height: 0 if root.selected_wallet_type != "lnbits" else dp(40)
+                    #pos_hint: {'center_x': 0.5}
+                    size_hint_x: 0.6
+                    MDButton:
+                        id: lnbits_create_account_button
+                        height: 0 if root.selected_wallet_type != "lnbits" else dp(40)
+                        pos_hint: {"center_x": 0.5}
+                        on_press: root.lnbits_create_account()
+                        disabled: False
+                        MDButtonText:
+                            text: "Create Account"
+
+                # User ID
+                MDTextField:
+                    id: user_id_field
+                    text: root.user_id
+                    helper_text: "Your LNBits user ID"
+                    helper_text_mode: "persistent"
+                    write_tab: False
+                    multiline: False
+                    on_text: root.on_user_id_text(self.text)
+                    size_hint_x: 1
+                    MDTextFieldHintText:
+                        text: "User ID"
+
+                # API Keys
+                MDBoxLayout:
+                    orientation: 'horizontal'
+                    spacing: dp(15)
+                    size_hint_y: None
+                    height: dp(56)
+
+                    MDTextField:
+                        id: read_api_key_field
+                        text: root.read_api_key
+                        size_hint_x: 0.5
+                        write_tab: False
+                        multiline: False
+                        on_text: root.on_read_api_key_text(self.text)
+                        MDTextFieldHintText:
+                            text: "Read API Key"
+
+                    MDTextField:
+                        id: admin_api_key_field
+                        text: root.admin_api_key
+                        size_hint_x: 0.5
+                        write_tab: False
+                        multiline: False
+                        on_text: root.on_admin_api_key_text(self.text)
+                        MDTextFieldHintText:
+                            text: "Admin API Key"
+
+                # Wallet ID
+                MDTextField:
+                    id: wallet_id_field
+                    text: root.wallet_id
+                    helper_text: "ID of the specific wallet to use"
+                    helper_text_mode: "persistent"
+                    write_tab: False
+                    multiline: False
+                    on_text: root.on_wallet_id_text(self.text)
+                    size_hint_x: 1
+                    MDTextFieldHintText:
+                        text: "Wallet ID"
+                
+                MDWidget:
+
+                
+
+        # Validation message
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(30)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.8
+
+            MDLabel:
+                id: validation_label
+                text: root.validation_message
+                halign: 'center'
+                theme_text_color: "Error" if "not accessible" in root.validation_message.lower() or "failed" in root.validation_message.lower() else "Primary"
+
+        # Navigation buttons
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(50)
+            spacing: dp(20)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.8
+
+            MDButton:
+                size_hint: 0.3, 1
+                on_release: root.go_back()
+                md_bg_color: app.theme_cls.surfaceColor
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.onSurfaceColor
+
+                MDButtonText:
+                    text: "Back"
+                    text_color: app.theme_cls.onSurfaceColor
+
+            # Spacer
+            Widget:
+                size_hint_x: 0.4
+
+            # Validate and Continue
+            MDButton:
+                size_hint: 0.3, 1
+                on_release: root.validate_and_complete()
+                disabled: root.is_validating
+                md_bg_color: app.theme_cls.primaryColor
+                theme_text_color: "Custom"
+
+                MDButtonText:
+                    text: "Validate & Continue"
+                    text_color: app.theme_cls.onPrimaryColor
+

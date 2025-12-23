@@ -1,0 +1,106 @@
+#:import dp kivy.metrics.dp
+
+<QuickSwapV2Screen>:
+    MDBoxLayout:
+        orientation: "vertical"
+        size_hint_x: None
+        width: root.width if root.width <= dp(1000) else dp(1000)
+        pos_hint: {"center_x": 0.5}
+        
+        MDScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(16)
+                padding: dp(16)
+                adaptive_height: True
+                
+                # Peer Selector (collapsible)
+                PeerSelectorCard:
+                    id: peer_selector
+                
+                # Swap Editor with Start Button
+                MDBoxLayout:
+                    orientation: "vertical"
+                    spacing: dp(12)
+                    adaptive_height: True
+                    
+                    SwapEditor:
+                        id: swap_editor
+                    
+                    MDBoxLayout:
+                        orientation: "horizontal"
+                        spacing: dp(12)
+                        adaptive_height: True
+
+                        # Start Swap Button (only visible when editing)
+                        MDButton:
+                            style: "filled"
+                            size_hint: 1, None
+                            height: dp(56) if root.ids.swap_editor.is_editing else 0
+                            opacity: 1 * (0.5 if self.disabled else 1) if root.ids.swap_editor.is_editing else 0
+                            md_bg_color_disabled: app.theme_cls.secondaryContainerColor
+                            disabled: not root.ids.swap_editor.is_valid or root.ids.peer_selector.is_checking or root.ids.swap_editor.is_fetching_rate
+                            on_release: root.start_swap()
+                            MDButtonIcon:
+                                icon: "rocket-launch"
+                                disabled_color: app.theme_cls.onSecondaryContainerColor
+                            MDButtonText:
+                                text: "Start Swap"
+                                font_style: "Title"
+                                role: "small"
+                                disabled_color: app.theme_cls.onSecondaryContainerColor
+
+                        # Read LN Invoice Button (only visible for kas2sat when editing)
+                        MDButton:
+                            style: "outlined"
+                            size_hint: 1, None
+                            height: dp(56) if root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat" else 0
+                            opacity: 1 if root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat" else 0
+                            disabled: not (root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat")
+                            on_release: root.ids.invoice_field.open_invoice_input_dialog(root.apply_invoice_to_preview)
+                            MDButtonIcon:
+                                icon: "lightning-bolt"
+                            MDButtonText:
+                                text: "Read LN Invoice"
+                        
+                        # spacer, pushes buttons to the left
+                        MDWidget:
+
+                
+                # Invoice Field (hidden until swap starts)
+                InvoiceField:
+                    id: invoice_field
+                
+                # Contract Address Field (hidden until swap starts)
+                ContractAddressField:
+                    id: contract_field
+                
+                # Payment Field (hidden until ready to pay)
+                PaymentField:
+                    id: payment_field
+                
+                # Status Widget (hidden until swap starts)
+                StatusWidget:
+                    id: status_widget
+                
+                # Cancel/Back Button (visible based on state)
+                MDButton:
+                    id: cancel_back_button
+                    style: "text"
+                    size_hint: 1, None
+                    height: dp(40) if root.show_cancel_button else 0
+                    opacity: 1 if root.show_cancel_button else 0
+                    disabled: not root.show_cancel_button
+                    on_release: root.cancel_swap()
+                    MDButtonIcon:
+                        icon: "close-circle" if not root.swap_final_state else "arrow-left"
+                        theme_icon_color: "Custom"
+                        icon_color: (1, 0.3, 0.3, 1) if not root.swap_final_state else app.theme_cls.primaryColor
+                    MDButtonText:
+                        text: root.cancel_button_text
+                        theme_text_color: "Custom"
+                        text_color: (1, 0.3, 0.3, 1) if not root.swap_final_state else app.theme_cls.primaryColor
+

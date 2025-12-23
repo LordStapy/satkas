@@ -1,0 +1,39 @@
+<SetupWizard>:
+    md_bg_color: app.theme_cls.backgroundColor
+    MDBoxLayout:
+        orientation: 'vertical'
+        spacing: dp(10)
+        padding: dp(10)
+
+        # Header with progress indicator
+        #MDBoxLayout:
+            #canvas:
+            #    Color:
+            #        rgba: 0,1,1,0.2
+            #    Rectangle:
+            #        pos: self.pos
+            #        size: self.size
+        #    size_hint_y: None
+        #    height: dp(0)
+        #    orientation: 'horizontal'
+        #    spacing: dp(10)
+
+        #    MDLabel:
+        #        text: "Setup Wizard"
+        #        font_style: "Headline"
+        #        role: "small"
+        #        size_hint_x: 0.8
+
+        #    MDLabel:
+        #        id: step_indicator
+        #        text: "Welcome"
+        #        font_style: "Body"
+        #        size_hint_x: 0.2
+        #        halign: 'right'
+
+        # Main content area with screen manager
+        MDBoxLayout:
+            size_hint_y: 1
+            MDScreenManager:
+                id: screen_manager
+                size_hint: 1, 1

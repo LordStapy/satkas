@@ -1,0 +1,78 @@
+#:import dp kivy.metrics.dp
+
+<ContractAddressField>:
+    style: "filled"
+    orientation: "vertical"
+    padding: dp(12)
+    #spacing: dp(8)
+    size_hint_y: None if self.is_visible else 0
+    height: 0 if not self.is_visible else self.minimum_height
+    opacity: 0 if not self.is_visible else 1
+    md_bg_color: app.theme_cls.surfaceContainerHighColor
+    
+    # Row 1: Title and Status
+    MDBoxLayout:
+        orientation: "horizontal"
+        spacing: dp(12)
+        adaptive_height: True
+        
+        MDLabel:
+            text: root.title_text
+            font_style: "Title"
+            role: "medium"
+            bold: True
+            adaptive_size: True
+        
+        MDLabel:
+            id: contract_status_label
+            text: root.status_text
+            font_style: "Body"
+            role: "large"
+            adaptive_size: True
+            theme_text_color: "Custom"
+            text_color: (0, 0.8, 0, 1) if root.is_confirmed else app.theme_cls.primaryColor
+
+        MDWidget:
+    
+    # Row 2: Address Label and QR Button
+    MDBoxLayout:
+        orientation: "horizontal"
+        #padding: dp(12)
+        spacing: dp(8)
+        adaptive_height: True
+        #adaptive_width: True
+        size_hint_x: None
+        width: min(dp(8*64) + dp(56), root.width - dp(24))  # ToDo: find a way to make this dynamic (in case of font size increase/decrease)
+        
+        # Copyable address label
+        MDLabel:
+            id: contract_address_label
+            #md_bg_color: 1, 0, 0, 0.5
+            text: root.contract_address_display
+            font_style: "Body"
+            role: "medium"
+            #adaptive_size: True
+            adaptive_height: True
+            #size_hint_x: 1
+            #text_size: self.width, None
+            shorten: True
+            shorten_from: "center"
+
+            pos_hint: {"center_y": 0.5}
+            theme_text_color: "Secondary"
+        
+        # QR Icon Button
+        MDIconButton:
+            icon: "qrcode"
+            style: "standard"
+            size_hint: None, None
+            size: dp(48), dp(48)
+            pos_hint: {"center_y": 0.5}
+            disabled: not root.contract_address
+            on_release: root.show_qr_popup()
+        
+        # Spacer - pushes remaining space to the right
+        #MDWidget:
+            #md_bg_color: 1, 0, 1, 0.4
+            #size_hint: None, 0
+            #width: max(root.width - dp(9*62 + 88), 0)

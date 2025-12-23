@@ -1,0 +1,154 @@
+#:import dp kivy.metrics.dp
+
+<SwapEditor>:
+    style: "elevated"
+    #orientation: "vertical"
+    padding: dp(16)
+    spacing: 0
+    size_hint_y: None
+    height: dp(244) if self.is_editing else dp(60)
+    md_bg_color: app.theme_cls.surfaceContainerHighColor
+    
+    # Editing Mode - Dual card layout
+    MDBoxLayout:
+        orientation: "vertical"
+        spacing: dp(12)
+        size_hint_x: 1 if root.is_editing else None
+        width: root.width if root.is_editing else 0
+        opacity: 1 if root.is_editing else 0
+        disabled: not root.is_editing
+        
+        # Send Amount Card
+        MDCard:
+            style: "filled"
+            size_hint_y: None
+            height: dp(70)
+            md_bg_color: (112/255, 199/255, 186/255, 0.15) if root.swap_direction == "kas2sat" else (1, 0.6, 0, 0.15)
+            
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: dp(12)
+                padding: [dp(16), dp(8), dp(16), dp(8)]
+                
+                MDLabel:
+                    text: "You send"
+                    font_style: "Title"
+                    role: "medium"
+                    bold: True
+                    size_hint_x: 0.3
+                    pos_hint: {"center_y": 0.5}
+                
+                MDTextField:
+                    id: send_input
+                    mode: "filled"
+                    #text: f"{root.kas_amount if root.swap_direction == 'kas2sat' else root.btc_amount:.8f}" if (root.kas_amount if root.swap_direction == 'kas2sat' else root.btc_amount) else ""
+                    text: root.send_amount_display
+                    input_filter: "float"
+                    font_style: "Title"
+                    role: "small"
+                    size_hint_x: 0.5
+                    size_hint_y: None
+                    height: dp(48)
+                    on_text: root.on_amount_input(self, self.text)
+                    MDTextFieldHintText:
+                        text: "Amount"
+                
+                MDLabel:
+                    text: "KAS" if root.swap_direction == "kas2sat" else "BTC"
+                    font_style: "Title"
+                    role: "medium"
+                    bold: True
+                    size_hint_x: 0.2
+                    halign: "center"
+                    pos_hint: {"center_y": 0.5}
+                    theme_text_color: "Custom"
+                    text_color: (112/255, 199/255, 186/255, 1) if root.swap_direction == "kas2sat" else (1, 0.6, 0, 1)
+        
+        # Direction Switch Button
+        MDIconButton:
+            icon: "swap-vertical-bold"
+            style: "standard"
+            pos_hint: {"center_x": 0.5}
+            size_hint: None, None
+            size: dp(48), dp(48)
+            on_release: root.switch_direction()
+        
+        # Receive Amount Card
+        MDCard:
+            style: "filled"
+            size_hint_y: None
+            height: dp(70)
+            md_bg_color: (1, 0.6, 0, 0.15) if root.swap_direction == "kas2sat" else (112/255, 199/255, 186/255, 0.15)
+            
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: dp(12)
+                padding: [dp(16), dp(8), dp(16), dp(8)]
+                
+                MDLabel:
+                    text: "You receive"
+                    font_style: "Title"
+                    role: "medium"
+                    bold: True
+                    size_hint_x: 0.3
+                    pos_hint: {"center_y": 0.5}
+                
+                #MDLabel:
+                #    text: f"{root.btc_amount:.8f}" if root.swap_direction == "kas2sat" and root.btc_amount else (f"{root.kas_amount:.2f}" if root.kas_amount >= 1 else f"{root.kas_amount:.8f}") if root.swap_direction == "sat2kas" and root.kas_amount else "0.00"
+                #    font_style: "Title"
+                #    role: "small"
+                #    size_hint_x: 0.5
+                #    halign: "center"
+                #    pos_hint: {"center_y": 0.5}
+
+                MDTextField:
+                    id: receive_input
+                    mode: "filled"
+                    #text: f"{root.btc_amount if root.swap_direction == 'kas2sat' else root.kas_amount:.8f}" if (root.btc_amount if root.swap_direction == 'kas2sat' else root.kas_amount) else ""
+                    text: root.receive_amount_display
+                    input_filter: "float"
+                    font_style: "Title"
+                    role: "small"
+                    size_hint_x: 0.5
+                    size_hint_y: None
+                    height: dp(48)
+                    on_text: root.on_amount_input(self, self.text)
+                    MDTextFieldHintText:
+                        text: "Amount"
+                
+                MDLabel:
+                    text: "BTC" if root.swap_direction == "kas2sat" else "KAS"
+                    font_style: "Title"
+                    role: "medium"
+                    bold: True
+                    size_hint_x: 0.2
+                    halign: "center"
+                    pos_hint: {"center_y": 0.5}
+                    theme_text_color: "Custom"
+                    text_color: (1, 0.6, 0, 1) if root.swap_direction == "kas2sat" else (112/255, 199/255, 186/255, 1)
+    
+    # Collapsed Mode - Single row summary
+    MDBoxLayout:
+        orientation: "horizontal"
+        size_hint_x: 0 if root.is_editing else 1
+        spacing: dp(12)
+        padding: [dp(16), 0, dp(16), 0]
+        opacity: 0 if root.is_editing else 1
+        disabled: root.is_editing
+
+        MDLabel:
+            text: root.summary_display
+            font_style: "Title"
+            role: "medium"
+            halign: "center"
+            pos_hint: {"center_y": 0.5}
+        
+        MDIcon:
+            id: editor_collapsed_icon
+            icon: "check-circle"
+            theme_text_color: "Custom"
+            text_color: (0, 0.8, 0, 1)
+            size_hint: None, None
+            size: dp(24), dp(24)
+            pos_hint: {"center_y": 0.5}
+

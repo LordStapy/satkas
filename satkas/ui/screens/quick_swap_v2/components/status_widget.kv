@@ -1,0 +1,101 @@
+#:import dp kivy.metrics.dp
+
+<StatusWidget>:
+    style: "filled"
+    orientation: "vertical"
+    padding: dp(12)
+    size_hint_y: None
+    height: 0 if not self.is_visible else self.minimum_height
+    opacity: 0 if not self.is_visible else 1
+    md_bg_color: app.theme_cls.surfaceContainerHighColor
+    
+    # Info section: Status + Countdown
+    MDBoxLayout:
+        orientation: "horizontal"
+        spacing: dp(12)
+        size_hint_y: None
+        height: dp(24)
+        
+        #MDBoxLayout:
+        #    orientation: "vertical"
+        #    size_hint_x: 0.6
+            
+        MDLabel:
+            text: "Status"
+            font_style: "Title"
+            role: "medium"
+            bold: True
+            #size_hint_y: None
+            #height: dp(20)
+            adaptive_size: True
+            pos_hint: {"center_y": 0.5}
+        
+        MDLabel:
+            id: status_info_label
+            text: root.status_text
+            font_style: "Body"
+            role: "large"
+            theme_text_color: "Secondary"
+            #size_hint_y: None
+            #height: dp(24)
+            adaptive_size: True
+            pos_hint: {"center_y": 0.5}
+            theme_text_color: "Custom"
+            text_color: app.theme_cls.primaryColor
+
+        MDIconButton:
+            icon: "content-copy"
+            pos_hint: {"center_y": 0.5}
+            disabled: not bool(root.txid)
+            opacity: 1 if root.txid else 0
+            on_release: root.screen.copy_to_clipboard(root.txid)
+
+        MDWidget:
+        
+        MDLabel:
+            text: root.countdown_text
+            font_style: "Body"
+            role: "medium"
+            #halign: "right"
+            #valign: "center"
+            #size_hint_x: 0.4
+            adaptive_size: True
+            pos_hint: {"center_y": 0.5}
+
+        #MDWidget:
+    
+    # Refund section (conditional - kas2sat + expired + funded)
+    MDBoxLayout:
+        orientation: "vertical"
+        spacing: dp(8)
+        size_hint_y: None
+        height: dp(90) if root.show_refund else 0
+        opacity: 1 if root.show_refund else 0
+        disabled: not root.show_refund
+        
+        MDDivider:
+            size_hint_y: None
+            height: dp(1)
+        
+        # Refund countdown or status
+        MDLabel:
+            text: root.refund_countdown_text if root.refund_countdown_text else "Refund available"
+            font_style: "Body"
+            role: "small"
+            theme_text_color: "Custom"
+            text_color: (1, 0.6, 0, 1) if not root.refund_enabled else (0, 0.8, 0, 1)
+            size_hint_y: None
+            height: dp(20)
+        
+        # Refund button
+        MDButton:
+            style: "tonal"
+            size_hint: 1, None
+            height: dp(48)
+            disabled: not root.refund_enabled or root.refund_triggered
+            on_release: root.trigger_refund()
+            MDButtonIcon:
+                icon: "undo"
+            MDButtonText:
+                text: "Refunding..." if root.refund_triggered else "Refund to Wallet"
+
