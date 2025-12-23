@@ -6,6 +6,6 @@ satkas.egg-info/
 venv/
 build/
 
-satkas/db/satkas.db
-satkas/klib/wallet.proto
-satkas/klib/wallet_pb2.py
+satkas/core/db/satkas.db
+satkas/core/klib/wallet.proto
+satkas/core/klib/wallet_pb2.py

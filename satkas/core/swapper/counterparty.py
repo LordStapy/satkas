@@ -11,8 +11,8 @@ from mnemonic import Mnemonic
 from bip44 import Wallet
 # from dotenv import load_dotenv
 
-from satkas.klib.kaddress import p2pk_address
-from satkas.klib.ksign import new_message_signing_hash_writer, sign_hash, verify_signature
+from satkas.core.klib.kaddress import p2pk_address
+from satkas.core.klib.ksign import new_message_signing_hash_writer, sign_hash, verify_signature
 
 # load_dotenv()
 

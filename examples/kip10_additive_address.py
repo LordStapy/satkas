@@ -3,19 +3,19 @@ import sys
 
 from dotenv import load_dotenv
 
-from satkas.klib.kbech32 import decode_address
-from satkas.klib.scripting import (
+from satkas.core.klib.kbech32 import decode_address
+from satkas.core.klib.scripting import (
     build_kip10_additive_borrower_script,
     build_kip10_borrower_spend_script,
     build_kip10_additive_threshold_script,
     build_kip10_threshold_spend_script
 )
-from satkas.klib.kaddress import get_script_hash, p2sh_address_from_script_hash
-from satkas.klib.kgrpc import getUtxosByAddresses, submitTransaction
-from satkas.klib.ktransactions import gen_input, gen_output, sign_p2pk_with_key
-from satkas.klib.kdatatype import Transaction, SighashReusedValues, SigHashType
-from satkas.klib.ksign import raw_tx_in_signature
-from satkas.klib.serialization import gen_rpc_transaction
+from satkas.core.klib.kaddress import get_script_hash, p2sh_address_from_script_hash
+from satkas.core.klib.kgrpc import getUtxosByAddresses, submitTransaction
+from satkas.core.klib.ktransactions import gen_input, gen_output, sign_p2pk_with_key
+from satkas.core.klib.kdatatype import Transaction, SighashReusedValues, SigHashType
+from satkas.core.klib.ksign import raw_tx_in_signature
+from satkas.core.klib.serialization import gen_rpc_transaction
 
 
 load_dotenv()

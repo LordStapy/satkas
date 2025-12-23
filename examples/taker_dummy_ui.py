@@ -9,8 +9,8 @@ logging.basicConfig(filename='taker_dummy_ui.log', filemode='w', level=logging.D
 
 from dotenv import load_dotenv
 
-from satkas.swapper.taker import Taker
-from satkas.p2p.taker_p2p_node import TakerNode
+from satkas.core.swapper.taker import Taker
+from satkas.core.p2p.taker_p2p_node import TakerNode
 
 load_dotenv()
 

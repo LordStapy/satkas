@@ -3,10 +3,10 @@ from sys import exit
 
 from coincurve import PublicKeyXOnly
 
-from satkas.klib.kaddress import p2pk_address
-from satkas.klib.kgrpc import getUtxosByAddresses, submitTransaction
-from satkas.klib.ktransactions import pay_from_address, sign_p2pk_with_key
-from satkas.klib.serialization import gen_rpc_transaction
+from satkas.core.klib.kaddress import p2pk_address
+from satkas.core.klib.kgrpc import getUtxosByAddresses, submitTransaction
+from satkas.core.klib.ktransactions import pay_from_address, sign_p2pk_with_key
+from satkas.core.klib.serialization import gen_rpc_transaction
 
 
 # insert private key in hex format and target address

@@ -1,12 +1,12 @@
 
 import logging
 
-from satkas.klib.kbech32 import decode_address
-from satkas.klib.script_builder import ScriptBuilder
-from satkas.klib.kdatatype import *
-from satkas.klib.kopcodes import *
-from satkas.klib.ksign import raw_tx_in_signature
-from satkas.klib.kgrpc import getUtxosByAddresses
+from satkas.core.klib.kbech32 import decode_address
+from satkas.core.klib.script_builder import ScriptBuilder
+from satkas.core.klib.kdatatype import *
+from satkas.core.klib.kopcodes import *
+from satkas.core.klib.ksign import raw_tx_in_signature
+from satkas.core.klib.kgrpc import getUtxosByAddresses
 
 
 logger = logging.getLogger('ktransactions')

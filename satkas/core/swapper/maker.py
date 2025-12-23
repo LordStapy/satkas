@@ -9,9 +9,9 @@ import logging
 from aiohttp import web
 from stem.control import Controller
 
-from satkas.db.models import MakerWallet, Swap
-from satkas.swapper.counterparty import Counterparty
-from satkas.swapper.atomic_swap import AtomicSwap
+from satkas.core.db.models import MakerWallet, Swap
+from satkas.core.swapper.counterparty import Counterparty
+from satkas.core.swapper.atomic_swap import AtomicSwap
 
 
 logger = logging.getLogger('maker')
@@ -175,10 +175,13 @@ class Maker(Counterparty):
         return web.json_response(response)
 
     async def handle_price_req(self, msg_payload, remote_pubkey):
-        self.locked_offers[remote_pubkey] = {
-            'sat2kas': {'offers': None, 'valid_until': 0},
-            'kas2sat': {'offers': None, 'valid_until': 0}
-        }
+        if not self.locked_offers.get(remote_pubkey, None):
+            self.locked_offers[remote_pubkey] = {
+                'sat2kas': {'offers': [], 'valid_until': 0},
+                'kas2sat': {'offers': [], 'valid_until': 0}
+            }
+        elif self.locked_offers.get(remote_pubkey, {}).get(msg_payload['swap_type'], {}).get('offers', []):
+            self.locked_offers[remote_pubkey][msg_payload['swap_type']] = {'offers': [], 'valid_until': 0}
         response_payload = {'type': 'swap_price'}
         valid_until = int(time.time()) + self.valid_until
         if msg_payload['swap_type'] == 'sat2kas':
@@ -222,7 +225,7 @@ class Maker(Counterparty):
                 for offer in self.price_offers['kas2sat'].values():
                     logger.info(f"{offer}")
                     _price, _min, _max = offer
-                    sat_amount = int(int(kas_amount) * _price)
+                    sat_amount = math.floor((kas_amount - 0.001) * _price)
                     logger.info(f"{sat_amount}")
                     if _min <= int(kas_amount) <= _max:
                         response_payload['amount'] = sat_amount
@@ -276,7 +279,8 @@ class Maker(Counterparty):
             receiver_address = msg_payload['receiver_address']
             kas_amount = msg_payload['kas_amount']
             try:
-                locked_offers = self.locked_offers[remote_node_pubkey]['sat2kas']['offers']
+                locked_offers = self.locked_offers[remote_node_pubkey]['sat2kas'].get('offers', [])
+                logger.info(f"Locked offers: {self.locked_offers}")
             except KeyError:
                 locked_offers = []
             for locked_offer in locked_offers:
@@ -289,7 +293,7 @@ class Maker(Counterparty):
                 offer = self.price_offers['sat2kas'].get(p2p_price)
                 if not (offer and swap_price >= offer[0] and offer[1] <= kas_amount <= offer[2]):
                     return False
-            sat_amount = int(kas_amount * swap_price)
+            sat_amount = math.ceil(kas_amount * swap_price)
             ln_invoice = await self.gen_ln_invoice(sat_amount, lncli=os.getenv('LNCLI', None))
             sender_address = address
             sender_private_key = None
@@ -307,9 +311,13 @@ class Maker(Counterparty):
             ln_invoice = msg_payload['ln_invoice']
             decoded_invoice = AtomicSwap().decode_ln_invoice(ln_invoice)
             sat_amount = int(decoded_invoice['num_satoshis'])
-            kas_amount = round(sat_amount / swap_price, 3)
+            calculated_kas_amount = round(sat_amount / swap_price, 3)
+            kas_amount = float(msg_payload.get('kas_amount', calculated_kas_amount))
+            assert kas_amount >= calculated_kas_amount
+            logger.info(f"KAS amount calculated from invoice: {kas_amount}")
             try:
-                locked_offers = self.locked_offers[remote_node_pubkey]['kas2sat']['offers']
+                locked_offers = self.locked_offers[remote_node_pubkey]['kas2sat'].get('offers', [])
+                logger.info(f"Locked offers: {self.locked_offers}")
             except KeyError:
                 locked_offers = []
             for locked_offer in locked_offers:
@@ -349,6 +357,7 @@ class Maker(Counterparty):
         decode_out = swap.decode_ln_invoice()
         logger.info(decode_out)
         if swap_type == 'kas2sat':
+            logger.debug('Checking if source and destination are equal')
             cmd = os.getenv('LNCLI', 'lncli')
             if ln_rpc_server := os.getenv('LN_RPC_SERVER', ''):
                 cmd += f" --rpcserver {ln_rpc_server}"
@@ -359,12 +368,16 @@ class Maker(Counterparty):
                 if out['identity_pubkey'] == decode_out['destination']:
                     logger.error('Payment to ourself, aborting...')
                     return False
+                else:
+                    logger.debug('All good')
             else:
                 logger.error(err)
         if swap.timelock / 1000 < time.time():
             # invoice is already expired, abort swap
             return False
+        logger.debug('Calculating P2SH address')
         swap.gen_contract_address()
+        logger.debug('P2SH calculated')
 
         self.swaps[swap_type][swap.contract_address] = swap
 
@@ -431,7 +444,8 @@ class Maker(Counterparty):
         # redeem path
         # check if invoice was paid, then end swap
         if swap.timelock > time.time() * 1000:
-            cmd = f"lncli --rpcserver {os.getenv('LN_RPC_SERVER', '127.0.0.1:10009')} lookupinvoice " \
+            lncli = os.getenv('LNCLI', 'lncli')
+            cmd = f"{lncli} --rpcserver {os.getenv('LN_RPC_SERVER', '127.0.0.1:10009')} lookupinvoice " \
                   f"{swap.secret_hash.hex()}"
             proc = await asyncio.create_subprocess_shell(
                 cmd,
@@ -463,7 +477,7 @@ class Maker(Counterparty):
         db_swap = Swap.select().where(Swap.p2sh_address == swap.contract_address)
         if len(db_swap):
             db_swap = db_swap[0]
-        utxo_sum = await swap.async_check_utxo(swap.contract_address, min_amount=swap.kas_amount + 0.001, timeout=False)
+        utxo_sum = await swap.async_check_utxo(swap.contract_address, min_amount=swap.kas_amount, timeout=False)
         if not utxo_sum:
             # check if invoice is expired
             # if yes, then delete swap from list and set it as EXPIRED in db

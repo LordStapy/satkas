@@ -9,13 +9,11 @@ import certifi
 
 from inputimeout import inputimeout, TimeoutOccurred
 from aiohttp_socks import ProxyConnector
-# from dotenv import load_dotenv
 
-from satkas.db.models import TakerWallet, Swap
-from satkas.swapper.counterparty import Counterparty
-from satkas.swapper.atomic_swap import AtomicSwap
+from satkas.core.db.models import TakerWallet, Swap
+from satkas.core.swapper.counterparty import Counterparty
+from satkas.core.swapper.atomic_swap import AtomicSwap
 
-# load_dotenv()
 
 logger = logging.getLogger('taker')
 logging.basicConfig(
@@ -243,6 +241,12 @@ class Taker(Counterparty):
                 res = price
             elif price_response['payload'].get('offers'):
                 offers = price_response['payload']['offers']
+                # filter valid offers if a kas amount is provided
+                if kas_amount:
+                    offers = {k: v for k, v in offers.items() if v[1] <= kas_amount <= v[2]}
+                    # if no offers are left, return False
+                    if not offers:
+                        return False
                 # we don't trust the maker, so we sort the offers and select lowest price
                 # offer format is int_price: (float_price, min_amt, max_amt)
                 best_offer_key = sorted(offers,
@@ -258,9 +262,9 @@ class Taker(Counterparty):
                 else:
                     res = price
             else:
-                # we should not hit this
+                # we should not hit this -> (time passes) -> actually, we can hit this if the maker has no offers
                 return False
-            logger.info(f"Maker price is {price}")
+            logger.debug(f"Maker price is {price}")
         else:
             logger.error(f"Error getting quote from maker: {price_response['error']}")
             return False

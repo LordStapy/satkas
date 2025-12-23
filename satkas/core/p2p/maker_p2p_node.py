@@ -5,7 +5,7 @@ import json
 import logging
 
 try:
-    from satkas.p2p.p2p_node import Node
+    from satkas.core.p2p.p2p_node import Node
 except ImportError:
     from .p2p_node import Node
 

@@ -9,7 +9,7 @@ MASS_PER_SIG_OP = 1000
 KIP9_C = int(1e12)
 
 
-def tx_estimated_serialized_size(tx):
+def tx_estimated_serialized_size(tx, signature_script_size=66):
     size = 0
     size += 2  # version u16
     size += 8  # number of inputs u64
@@ -19,7 +19,10 @@ def tx_estimated_serialized_size(tx):
         size += 4  # index u32
         # signature script
         size += 8  # length of signature script
-        size += len(i.signature_script)  # u64
+        if i.signature_script is None:
+            size += signature_script_size  # default to p2pk signature_script (OP_65 + 64 bytes sig + 1 byte hashtype)
+        else:
+            size += len(i.signature_script)  # u64
         # sequence
         size += 8
     size += 8  # number of outputs u64
@@ -60,16 +63,16 @@ def negative_mass(input_values, output_count):
 def storage_mass(inputs, outputs):
     n = negative_mass([i.utxo_entry.amount for i in inputs], len(outputs))
     p = sum([KIP9_C // o.value for o in outputs])
-    print(f"[storage_mass] Negative mass: {n}")
-    print(f"[storage_mass] Positive mass: {p}")
+    # print(f"[storage_mass] Negative mass: {n}")
+    # print(f"[storage_mass] Positive mass: {p}")
     return max(p - n, 0)
 
 
 def mass(tx):
     s_mass = storage_mass(tx.inputs, tx.outputs)
     c_mass = compute_mass(tx)
-    print(f"Computed storage_mass: {s_mass}")
-    print(f"Computed compute_mass: {c_mass}")
+    # print(f"Computed storage_mass: {s_mass}")
+    # print(f"Computed compute_mass: {c_mass}")
     return max(s_mass, c_mass)
 
 

@@ -1,5 +1,6 @@
 
 OP_0 = b'\x00'
+OP_FALSE = b'\x00'
 
 # OP_DATAx pushes itself (1) and x bytes, total = (x + 1) bytes
 OP_DATA1 = b'\x01'

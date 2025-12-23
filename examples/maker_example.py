@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 # install ccxt
 import ccxt.async_support as ccxt
 
-from satkas.swapper.maker import Maker
-from satkas.p2p.maker_p2p_node import MakerNode
+from satkas.core.swapper.maker import Maker
+from satkas.core.p2p.maker_p2p_node import MakerNode
 
 
 load_dotenv()
