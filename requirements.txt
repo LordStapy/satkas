@@ -7,6 +7,7 @@ coincurve==18.0.0
 grpcio==1.68.1
 inputimeout==1.0.4
 peewee==3.17.6
+pexpect==4.9.0
 protobuf==5.28.1
 python-dotenv==1.0.1
 python-socks[asyncio]==2.5.1
