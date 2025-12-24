@@ -5,6 +5,7 @@ __pycache__/
 satkas.egg-info/
 venv/
 build/
+dist/
 
 satkas/core/db/satkas.db
 satkas/core/klib/wallet.proto
