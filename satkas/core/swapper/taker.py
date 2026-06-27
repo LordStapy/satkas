@@ -121,7 +121,7 @@ class Taker(Counterparty):
         assert self.swap.sat_amount == int(kas_amount * price)
 
         # await funding of P2SH address
-        utxo_sum = self.swap.check_utxo(min_amount=kas_amount+0.001)
+        utxo_sum = self.swap.check_utxo(min_amount=kas_amount+0.01)
         if not utxo_sum:
             self.db_set_swap_status('EXPIRED')
             return
@@ -196,8 +196,8 @@ class Taker(Counterparty):
             await self.fund_contract_address(self.swap.contract_address, amount=kas_amount)
         except Exception as e:
             logger.error(e, exc_info=True)
-            logger.info(f"Pay to {self.swap.contract_address} a minimum of {maker_kas_amount + 0.001} KAS")
-        utxo_sum = self.swap.check_utxo(min_amount=maker_kas_amount+0.001)
+            logger.info(f"Pay to {self.swap.contract_address} a minimum of {maker_kas_amount + 0.01} KAS")
+        utxo_sum = self.swap.check_utxo(min_amount=maker_kas_amount+0.01)
         if not utxo_sum:
             self.db_set_swap_status('EXPIRED')
             return False

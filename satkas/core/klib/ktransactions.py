@@ -82,8 +82,8 @@ def pay_from_address(sender_address, receiver_address, amount=0, fee=0, payload=
     # returns an unsigned transaction
     dwork_amount = int(amount * 1e8)
     if not fee:
-        # network fee defaults to 10k dwork, or 0.0001 KAS
-        fee = 10000
+        # network fee defaults to 100k dwork, or 0.001 KAS
+        fee = 100_000
     # select outpoint and utxo_entry
     selected_utxos, selected_amount = select_utxos(sender_address, dwork_amount, fee)
 

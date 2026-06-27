@@ -275,9 +275,9 @@ class AtomicSwap:
             amounts_sum += amount
         # Generate output
         tx_outputs = []
-        fee = 100_000
+        fee = 1_000_000
         tx_output = Output(
-            amounts_sum - fee,  # full amount - 0.001 KAS
+            amounts_sum - fee,  # full amount - 0.01 KAS
             ScriptPublicKey(0, b'\x20' + out_pubkey + b'\xac')  # p2pk
         )
         tx_outputs.append(tx_output)

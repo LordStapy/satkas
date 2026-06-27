@@ -198,7 +198,7 @@ class Counterparty:
         cmd += f" -t {address}"
         if wallet_password := os.getenv('KASPAWALLET_PASSWORD', ''):
             cmd += f" -p {wallet_password}"
-        cmd += f" -v {amount + 0.001}"  # we include a 0.001 fee for redeem/refund tx
+        cmd += f" -v {amount + 0.01}"  # we include a 0.01 fee for redeem/refund tx
         if wallet_file := os.getenv('KASPAWALLET_KEY_FILE', ''):
             cmd += f" -f {wallet_file}"
 

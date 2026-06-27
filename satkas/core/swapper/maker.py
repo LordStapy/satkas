@@ -225,7 +225,7 @@ class Maker(Counterparty):
                 for offer in self.price_offers['kas2sat'].values():
                     logger.info(f"{offer}")
                     _price, _min, _max = offer
-                    sat_amount = math.floor((kas_amount - 0.001) * _price)
+                    sat_amount = math.floor((kas_amount - 0.01) * _price)
                     logger.info(f"{sat_amount}")
                     if _min <= int(kas_amount) <= _max:
                         response_payload['amount'] = sat_amount
