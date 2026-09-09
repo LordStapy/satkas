@@ -1,0 +1,28 @@
+# Files needed to build / describe the source distribution
+include LICENSE
+include README.md
+include requirements.txt
+include pyproject.toml
+include setup.py
+
+# UI assets (also listed via setup.py package_data)
+recursive-include satkas *.kv
+recursive-include satkas *.png
+
+# Secrets and local artifacts
+exclude satkas/core/klib/wallet.proto
+exclude satkas/core/klib/wallet_pb2.py
+global-exclude *.env
+global-exclude *hidden_service_key*
+global-exclude satkas.db
+global-exclude *.db
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.egg-info
+global-exclude .DS_Store
+
+prune build
+prune dist
+prune venv
+prune .venv
+prune .cursor

@@ -6,8 +6,8 @@ from kivy.metrics import dp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDButton, MDButtonText
 from kivymd.uix.widget import MDWidget
-from kivymd.uix.dialog import MDDialog, MDDialogButtonContainer, MDDialogContentContainer, MDDialogHeadlineText, MDDialogSupportingText
-from kivy.properties import StringProperty, BooleanProperty, ObjectProperty, ListProperty
+from kivymd.uix.dialog import MDDialog, MDDialogButtonContainer, MDDialogHeadlineText, MDDialogSupportingText
+from kivy.properties import StringProperty, BooleanProperty, ListProperty
 import asyncio
 from functools import partial
 
@@ -25,7 +25,8 @@ class LnWalletSetupPage(MDScreen):
     selected_wallet_type = StringProperty('external')
     wallet_types = ListProperty([
         {'name': 'External Wallet', 'value': 'external', 'description': 'Use an external Lightning Network wallet'},
-        {'name': 'LNBits', 'value': 'lnbits', 'description': 'Connect to an LNBits server for Lightning payments'}
+        {'name': 'LNBits', 'value': 'lnbits', 'description': 'Connect to an LNBits server for Lightning payments'},
+        {'name': 'LNCLI (LND)', 'value': 'lncli', 'description': 'Connect to a local LND node via lncli'},
     ])
 
     # LNBits configuration fields
@@ -35,10 +36,15 @@ class LnWalletSetupPage(MDScreen):
     admin_api_key = StringProperty('')
     wallet_id = StringProperty('')
 
+    # LND / lncli configuration fields
+    lncli_bin = StringProperty('')
+    rpc_server = StringProperty('')
+
     is_validating = BooleanProperty(False)
     validation_message = StringProperty('')
     is_configured = BooleanProperty(False)
     show_fallback_prompt = BooleanProperty(False)
+    lnbits_create_disabled = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -72,6 +78,8 @@ class LnWalletSetupPage(MDScreen):
         service_type = type(self.service).__name__
         if 'LNBits' in service_type:
             return 'lnbits'
+        elif 'Lncli' in service_type:
+            return 'lncli'
         else:
             return 'external'
 
@@ -84,12 +92,28 @@ class LnWalletSetupPage(MDScreen):
             self.read_api_key = ''
             self.admin_api_key = ''
             self.wallet_id = ''
+            self.lncli_bin = ''
+            self.rpc_server = ''
+        elif self.selected_wallet_type == 'lncli':
+            self.lncli_bin = getattr(self.service, 'lncli_bin', '') or ''
+            self.rpc_server = getattr(self.service, 'rpc_server', '') or ''
+            self.base_url = ''
+            self.user_id = ''
+            self.read_api_key = ''
+            self.admin_api_key = ''
+            self.wallet_id = ''
         elif self.selected_wallet_type == 'lnbits':
             self.base_url = getattr(self.service, 'base_url', '')
             self.user_id = getattr(self.service, 'user_id', '')
             self.read_api_key = getattr(self.service, 'read_api_key', '')
             self.admin_api_key = getattr(self.service, 'admin_api_key', '')
             self.wallet_id = getattr(self.service, 'wallet_id', '')
+            self.lncli_bin = ''
+            self.rpc_server = ''
+        self._sync_lnbits_create_button()
+
+    def _sync_lnbits_create_button(self):
+        self.lnbits_create_disabled = bool(self.user_id and self.wallet_id)
 
     def on_wallet_type_selected(self, wallet_type):
         """Called when user selects a wallet type."""
@@ -106,9 +130,9 @@ class LnWalletSetupPage(MDScreen):
 
     def lnbits_create_account(self):
         """Called when create account button is pressed."""
+        self.lnbits_create_disabled = True
         task = asyncio.create_task(self.service.create_new_account())
         task.add_done_callback(partial(self.lnbits_account_created_cb, self))
-        self.ids.lnbits_create_account_button.disabled = True
 
     @staticmethod
     def lnbits_account_created_cb(cls, task):
@@ -117,10 +141,13 @@ class LnWalletSetupPage(MDScreen):
         cls.read_api_key = cls.service.read_api_key
         cls.admin_api_key = cls.service.admin_api_key
         cls.wallet_id = cls.service.wallet_id
+        cls._sync_lnbits_create_button()
 
     def on_base_url_text(self, text):
         """Called when base URL text changes."""
         self.base_url = text
+        if self.selected_wallet_type != 'lnbits':
+            return
         self.service.base_url = text
         task = asyncio.create_task(self.service.detect())
         task.add_done_callback(partial(self.service_detection_cb, self))
@@ -154,10 +181,19 @@ class LnWalletSetupPage(MDScreen):
         """Called when wallet ID text changes."""
         self.wallet_id = text
 
+    def on_lncli_bin_text(self, text):
+        self.lncli_bin = text
+
+    def on_rpc_server_text(self, text):
+        self.rpc_server = text
+
     def use_defaults(self):
-        """Use default configuration for LNBits."""
+        """Use default configuration for the selected wallet type."""
         if self.selected_wallet_type == 'lnbits':
             self.base_url = getattr(self.service, 'default_base_url', 'http://127.0.0.1:5000')
+        elif self.selected_wallet_type == 'lncli':
+            self.lncli_bin = getattr(self.service, 'default_lncli', 'lncli')
+            self.rpc_server = getattr(self.service, 'default_rpc_server', '127.0.0.1:10009')
 
     def use_fallback(self):
         """Use fallback LNBits server (third-party hosted)."""
@@ -217,11 +253,11 @@ class LnWalletSetupPage(MDScreen):
 
         try:
             # Update service configuration based on selected type
-            if self.selected_wallet_type == 'external':
-                # External wallet is always valid
-                self.validation_message = 'External wallet selected - ready to use!'
-                self.is_configured = True
-                return
+            if self.selected_wallet_type == 'lncli':
+                if hasattr(self.service, 'lncli_bin'):
+                    self.service.lncli_bin = self.lncli_bin
+                if hasattr(self.service, 'rpc_server'):
+                    self.service.rpc_server = self.rpc_server
 
             elif self.selected_wallet_type == 'lnbits':
                 if hasattr(self.service, 'base_url'):

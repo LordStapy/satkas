@@ -3,14 +3,14 @@
 
     MDBoxLayout:
         orientation: 'vertical'
-        spacing: dp(20)
+        spacing: dp(10)
         padding: dp(30)
 
         # Title and description
         MDBoxLayout:
             orientation: 'vertical'
             size_hint_y: None
-            height: dp(100)
+            height: dp(70)
             spacing: dp(10)
 
             MDLabel:
@@ -21,74 +21,169 @@
                 halign: 'center'
 
             MDLabel:
-                text: "Connect to a Kaspa node to access the blockchain. You can run your own node locally or connect to a remote node."
+                text: "Connect to a Kaspa node or explorer to access the blockchain."
                 font_style: "Body"
                 size_hint_y: None
-                height: dp(50)
+                height: dp(30)
                 halign: 'center'
                 theme_text_color: "Secondary"
 
         # Configuration inputs
         MDBoxLayout:
             orientation: 'vertical'
+            spacing: dp(10)
             size_hint_y: None
-            height: dp(150)
-            spacing: dp(15)
+            height: self.minimum_height
+            padding: [0, 0, 0, dp(20)]
             pos_hint: {'center_x': 0.5}
             size_hint_x: 0.6
 
-            # Host input
-            MDTextField:
-                id: host_field
-                text: root.host
-                helper_text: "Address of your Kaspa node"
-                helper_text_mode: "on_focus"
-                write_tab: False
-                multiline: False
-                on_text: root.on_host_text(self.text)
-                size_hint_x: 1
-                MDTextFieldHintText:
-                    text: "Kaspa Node Host"
+            MDLabel:
+                text: "Node Type:"
+                font_style: "Body"
+                size_hint_y: None
+                height: dp(30)
 
-            # Port input
-            MDTextField:
-                id: port_field
-                text: root.port
-                helper_text: "RPC port of your Kaspa node"
-                helper_text_mode: "on_focus"
-                write_tab: False
-                multiline: False
-                input_filter: 'int'
-                on_text: root.on_port_text(self.text)
-                size_hint_x: 1
-                MDTextFieldHintText:
-                    text: "Kaspa Node Port"
+            MDBoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(30)
+                spacing: dp(10)
 
-        # Use defaults button
+                MDButton:
+                    size_hint_x: 0.5
+                    md_bg_color: app.theme_cls.primaryColor if root.selected_type == "kaspad" else app.theme_cls.surfaceColor
+                    style: "filled" if root.selected_type == "kaspad" else "outlined"
+                    on_release: root.on_type_selected("kaspad")
+                    MDButtonText:
+                        text: "Kaspad"
+                        text_color: app.theme_cls.onPrimaryColor if root.selected_type == "kaspad" else app.theme_cls.onSurfaceColor
+
+                MDButton:
+                    size_hint_x: 0.5
+                    md_bg_color: app.theme_cls.primaryColor if root.selected_type == "explorer" else app.theme_cls.surfaceColor
+                    style: "filled" if root.selected_type == "explorer" else "outlined"
+                    on_release: root.on_type_selected("explorer")
+                    MDButtonText:
+                        text: "Explorer"
+                        text_color: app.theme_cls.onPrimaryColor if root.selected_type == "explorer" else app.theme_cls.onSurfaceColor
+
+            MDLabel:
+                text: [t['description'] for t in root.monitor_types if t['value'] == root.selected_type][0] if root.selected_type else ""
+                size_hint_y: None
+                height: dp(40)
+                theme_text_color: "Secondary"
+
         MDBoxLayout:
-            size_hint_y: None
-            height: dp(40)
-            spacing: dp(15)
-            pos_hint: {'center_x': 0.5}
-            size_hint_x: 0.6
+            orientation: 'vertical'
+            size_hint: 0.6, 1
+            pos_hint: {"center_x": 0.5}
 
-            MDButton:
-                on_press: root.use_defaults()
-                # pos_hint: {'center_x': 0.5}
+            MDScrollView:
+                size_hint_x: 1
+                size_hint_y: None
+                height: min(config_box.height, self.parent.height) if self.parent else config_box.height
+                do_scroll_x: False
+                do_scroll_y: True
+                bar_width: 4
+                scroll_y: 1
 
-                MDButtonText:
-                    text: "Use Default Settings (127.0.0.1:16110)"
+                MDBoxLayout:
+                    id: config_box
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: 0
+                    padding: [dp(20), dp(20), dp(20), dp(24)]
+                    md_bg_color: app.theme_cls.surfaceContainerHighColor
 
-            MDButton:
-                on_press: root.show_fallback_dialog()
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height if root.selected_type == "kaspad" else 0
+                        spacing: dp(16)
+                        opacity: 1 if root.selected_type == "kaspad" else 0
+                        disabled: root.selected_type != "kaspad"
 
-                MDButtonText:
-                    text: "Use Hosted Node"
+                        MDTextField:
+                            text: root.host
+                            size_hint_y: None
+                            height: dp(56) if root.selected_type == "kaspad" else 0
+                            write_tab: False
+                            multiline: False
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_host_text(self.text)
+                            MDTextFieldHintText:
+                                text: "Kaspa Node Host"
+
+                        MDTextField:
+                            text: root.port
+                            size_hint_y: None
+                            height: dp(56) if root.selected_type == "kaspad" else 0
+                            write_tab: False
+                            multiline: False
+                            input_filter: 'int'
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_port_text(self.text)
+                            MDTextFieldHintText:
+                                text: "Kaspa Node Port"
+
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: dp(40) if root.selected_type == "kaspad" else 0
+                            spacing: dp(15)
+
+                            MDButton:
+                                on_press: root.use_defaults()
+                                MDButtonText:
+                                    text: "Use Default Settings (127.0.0.1:16110)"
+
+                            MDButton:
+                                on_press: root.show_fallback_dialog()
+                                MDButtonText:
+                                    text: "Use Hosted Node"
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height if root.selected_type == "explorer" else 0
+                        spacing: dp(16)
+                        opacity: 1 if root.selected_type == "explorer" else 0
+                        disabled: root.selected_type != "explorer"
+
+                        MDTextField:
+                            text: root.base_url
+                            size_hint_y: None
+                            height: dp(56) if root.selected_type == "explorer" else 0
+                            write_tab: False
+                            multiline: False
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_base_url_text(self.text)
+                            MDTextFieldHintText:
+                                text: "Explorer API Base URL"
+
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: dp(40) if root.selected_type == "explorer" else 0
+
+                            MDButton:
+                                on_press: root.use_defaults()
+                                MDButtonText:
+                                    text: "Use Default API (api.kaspa.org)"
+
+            Widget:
+                size_hint_y: 1
 
         # Validation message
         MDBoxLayout:
             size_hint_y: None
-            height: dp(60)
+            height: dp(30)
             pos_hint: {'center_x': 0.5}
             size_hint_x: 0.8
 
@@ -96,9 +191,7 @@
                 id: validation_label
                 text: root.validation_message
                 halign: 'center'
-                theme_text_color: "Error" if "not found" in root.validation_message.lower() or "failed" in root.validation_message.lower() else "Primary"
-
-        MDWidget:
+                theme_text_color: "Error" if ("not found" in root.validation_message.lower() or "failed" in root.validation_message.lower() or "not reachable" in root.validation_message.lower() or "capacity" in root.validation_message.lower()) else "Primary"
 
         # Navigation buttons
         MDBoxLayout:
@@ -135,4 +228,3 @@
 
                 MDButtonText:
                     text: "Validate & Continue"
-

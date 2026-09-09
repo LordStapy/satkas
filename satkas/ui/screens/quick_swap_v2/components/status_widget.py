@@ -2,7 +2,7 @@
 Status Widget Component - Status display with refund and cancel
 """
 
-import asyncio
+# import asyncio  # unused after phase 5: refund trigger commented out
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, NumericProperty
 from kivy.metrics import dp
@@ -35,6 +35,7 @@ class StatusWidget(MDCard):
     
     # Visibility
     is_visible = BooleanProperty(False)
+    is_focused = BooleanProperty(False)
     
     # Reference to parent screen
     screen = None
@@ -65,37 +66,36 @@ class StatusWidget(MDCard):
         self.refund_countdown_text = ""
         self.txid = ""
         self.is_visible = False
+        self.is_focused = False
         self.ids.status_info_label.text_color = self.screen.app.theme_cls.primaryColor
     
     def update_refund_visibility(self):
-        """
-        Update refund button visibility based on state.
-        Show refund only if: kas2sat + expired + funded
-        """
-        self.show_refund = (
-            self.swap_direction == "kas2sat" and
-            self.is_expired and
-            self.is_funded and
-            not self.refund_triggered  # Hide after successful refund
-        )
-    
-    def trigger_refund(self):
-        """Trigger refund transaction."""
-        if not self.refund_enabled or self.refund_triggered:
-            return
-        asyncio.create_task(self._trigger_refund())
+        """Refund is automatic in the orchestrator; the button stays hidden.
 
-    async def _trigger_refund(self):
-        # handle refund address 
-        # case 1: internal wallet -> we generate a new address
-        # case 2: external wallet -> we ask user to input the address (via dialog pop-up)
-        # case 3: fallback -> if somehow we don't have an address at this point, we send the refund to key 0 of the satkas wallet 
-        await self.screen.handle_output_address(refund=True)
-        
-        self.refund_triggered = True
-        self.refund_enabled = False
-        self.status_text = "Refunding..."
-        
-        if self.screen:
-            self.screen.refund_contract(self.screen.output_address)
+        Commented during phase 5 of the taker/controller integration:
+        show refund only if kas2sat + expired + funded.
+        """
+        self.show_refund = False
+        # self.show_refund = (
+        #     self.swap_direction == "kas2sat" and
+        #     self.is_expired and
+        #     self.is_funded and
+        #     not self.refund_triggered
+        # )
+
+    def trigger_refund(self):
+        """No-op: refund is automatic. Kept so the KV binding does not break."""
+        # Commented during phase 5 of the taker/controller integration.
+        # if not self.refund_enabled or self.refund_triggered:
+        #     return
+        # asyncio.create_task(self._trigger_refund())
+        return
+
+    # async def _trigger_refund(self):
+    #     await self.screen.handle_output_address(refund=True)
+    #     self.refund_triggered = True
+    #     self.refund_enabled = False
+    #     self.status_text = "Refunding..."
+    #     if self.screen:
+    #         self.screen.refund_contract(self.screen.output_address)
 

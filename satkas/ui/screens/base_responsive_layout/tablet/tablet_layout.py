@@ -1,10 +1,6 @@
 import os
 
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
-from kivy.metrics import dp
-from kivy.clock import Clock
 from kivy.app import App
 from kivy.lang import Builder
 

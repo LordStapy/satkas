@@ -1,10 +1,9 @@
-#:import dp kivy.metrics.dp
 
 <ContractAddressField>:
     style: "filled"
     orientation: "vertical"
     padding: dp(12)
-    #spacing: dp(8)
+    spacing: dp(8)
     size_hint_y: None if self.is_visible else 0
     height: 0 if not self.is_visible else self.minimum_height
     opacity: 0 if not self.is_visible else 1
@@ -33,15 +32,27 @@
             text_color: (0, 0.8, 0, 1) if root.is_confirmed else app.theme_cls.primaryColor
 
         MDWidget:
+            size_hint_y: None
+            height: 0
+
+    # Who funds this side (taker vs maker) — set at swap init
+    #MDLabel:
+    #    text: root.description_text
+    #    font_style: "Body"
+    #    role: "small"
+    #    theme_text_color: "Secondary"
+    #    adaptive_height: True
+    #    size_hint_y: None
+    #    height: 0 if not root.description_text else self.texture_size[1]
+    #    opacity: 0 if not root.description_text else 1
     
     # Row 2: Address Label and QR Button
     MDBoxLayout:
         orientation: "horizontal"
-        #padding: dp(12)
         spacing: dp(8)
-        adaptive_height: True
-        #adaptive_width: True
-        size_hint_x: None
+        #adaptive_height: True
+        size_hint: None, None
+        height: dp(48)
         width: min(dp(8*64) + dp(56), root.width - dp(24))  # ToDo: find a way to make this dynamic (in case of font size increase/decrease)
         
         # Copyable address label
@@ -51,10 +62,7 @@
             text: root.contract_address_display
             font_style: "Body"
             role: "medium"
-            #adaptive_size: True
             adaptive_height: True
-            #size_hint_x: 1
-            #text_size: self.width, None
             shorten: True
             shorten_from: "center"
 

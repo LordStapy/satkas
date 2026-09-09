@@ -2,11 +2,8 @@
 import os
 import hashlib
 
-# from dotenv import load_dotenv
-
 from satkas.core.klib.kbech32 import encode_address, decode_address
 
-# load_dotenv()
 
 
 def get_script_hash(script):

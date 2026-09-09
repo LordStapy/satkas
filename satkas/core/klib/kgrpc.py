@@ -30,7 +30,7 @@ def run_grpc_command(rpc_requests, rpc_server=None, channel=None, timeout=None):
                 rpc_server,
                 options=[
                     ('grpc.max_send_message_length', -1),
-                    ('grpc.max_receive_message_length', (1024**2)*8)
+                    ('grpc.max_receive_message_length', (1024**2)*64)
                 ]
         )
     stub = RPCStub(channel)
@@ -68,9 +68,69 @@ def getBlockDagInfo(**kwargs):
     return base_request('getBlockDagInfo', **kwargs)
 
 
+def getFeeEstimate(**kwargs):
+    return base_request('getFeeEstimate', **kwargs)
+
+
 def getUtxoReturnAddress(txid, daa, **kwargs):
     payload = {'txid': txid, 'accepting_block_daa_score': daa}
     return base_request('GetUtxoReturnAddress', payload, **kwargs)
+
+
+def getMempoolEntry(tx_id, include_orphan_pool=True, filter_transaction_pool=False, **kwargs):
+    payload = {
+        'txId': tx_id,
+        'includeOrphanPool': include_orphan_pool,
+        'filterTransactionPool': filter_transaction_pool,
+    }
+    return base_request('getMempoolEntry', payload, **kwargs)
+
+
+def getVirtualChainFromBlock(
+    start_hash,
+    include_accepted_transaction_ids=True,
+    min_confirmation_count=0,
+    **kwargs,
+):
+    """Pull accepted txs on the virtual chain from start_hash toward tip.
+
+    See https://docs.kaspa.org/integrate/accepted-transactions
+    """
+    payload = {
+        'startHash': start_hash,
+        'includeAcceptedTransactionIds': include_accepted_transaction_ids,
+        'minConfirmationCount': int(min_confirmation_count),
+    }
+    return base_request('getVirtualChainFromBlock', payload, **kwargs)
+
+
+def getVirtualChainFromBlockV2(
+    start_hash,
+    data_verbosity_level='FULL',
+    min_confirmation_count=0,
+    **kwargs,
+):
+    """Pull accepted transactions (bodies) on the virtual chain from start_hash.
+
+    Use FULL so inputs include previousOutpoint + signatureScript (needed for
+    HTLC secret extraction). Response is batched; advance via
+    addedChainBlockHashes[-1] as the next checkpoint.
+    See https://docs.kaspa.org/integrate/accepted-transactions
+    """
+    payload = {
+        'startHash': start_hash,
+        'dataVerbosityLevel': data_verbosity_level,
+        'minConfirmationCount': int(min_confirmation_count),
+    }
+    return base_request('getVirtualChainFromBlockV2', payload, **kwargs)
+
+
+def getBlock(block_hash, include_transactions=True, **kwargs):
+    payload = {
+        'hash': block_hash,
+        'includeTransactions': bool(include_transactions),
+    }
+    return base_request('getBlock', payload, **kwargs)
 
 
 if __name__ == '__main__':

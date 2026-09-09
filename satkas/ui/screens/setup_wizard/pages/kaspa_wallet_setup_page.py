@@ -3,7 +3,7 @@ import os
 
 from kivy.lang import Builder
 from kivymd.uix.screen import MDScreen
-from kivy.properties import StringProperty, BooleanProperty, ObjectProperty, ListProperty
+from kivy.properties import StringProperty, BooleanProperty, ListProperty
 import asyncio
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), 'kaspa_wallet_setup_page.kv'))
@@ -20,7 +20,8 @@ class KaspaWalletSetupPage(MDScreen):
     wallet_types = ListProperty([
         {'name': 'External Wallet', 'value': 'external', 'description': 'Use an external Kaspa wallet application'},
         {'name': 'Go Wallet (kaspawallet)', 'value': 'go', 'description': 'Use the official Go implementation'},
-        {'name': 'Rusty Kaspa Wallet', 'value': 'rusty', 'description': 'Use the Rust implementation - DO NOT USE THIS, IMPLEMENTATION IS INCOMPLETE AND UNTESTED'}
+        # {'name': 'Rusty Kaspa Wallet', 'value': 'rusty', 'description': 'Use the Rust implementation - DO NOT USE THIS, IMPLEMENTATION IS INCOMPLETE AND UNTESTED'},
+        {'name': 'Internal Kaspa Wallet', 'value': 'internal', 'description': 'Sign with a private key from env (INTERNAL_KASPA_PRIVKEY) — testnet'},
     ])
 
     # Configuration fields
@@ -66,8 +67,10 @@ class KaspaWalletSetupPage(MDScreen):
         service_type = type(self.service).__name__
         if 'External' in service_type:
             return 'external'
-        elif 'Rusty' in service_type:
-            return 'rusty'
+        elif 'Internal' in service_type:
+            return 'internal'
+        # elif 'Rusty' in service_type:
+        #     return 'rusty'
         else:
             return 'go'
 
@@ -81,6 +84,14 @@ class KaspaWalletSetupPage(MDScreen):
             self.wallet_password = ''
             self.daemon_host = ''
             self.daemon_port = ''
+        elif self.selected_wallet_type == 'internal':
+            # Env-driven (INTERNAL_KASPA_PRIVKEY); clear go fields
+            self.binary_path = ''
+            self.wallet_file_path = ''
+            self.wallet_name = ''
+            self.wallet_password = ''
+            self.daemon_host = ''
+            self.daemon_port = ''
         elif self.selected_wallet_type == 'go':
             self.binary_path = getattr(self.service, 'binary_path', '')
             self.wallet_file_path = getattr(self.service, 'wallet_file_path', '')
@@ -88,20 +99,25 @@ class KaspaWalletSetupPage(MDScreen):
             self.daemon_host = getattr(self.service, 'daemon_host', '')
             self.daemon_port = str(getattr(self.service, 'daemon_port', ''))
             self.wallet_name = ''  # Not used in Go wallet
-        elif self.selected_wallet_type == 'rusty':
-            self.binary_path = getattr(self.service, 'binary_path', '')
-            self.wallet_name = getattr(self.service, 'wallet_name', '')
-            self.wallet_password = getattr(self.service, 'wallet_password', '')
-            self.wallet_file_path = ''  # Not used in Rusty wallet
-            self.daemon_host = ''  # Not used in Rusty wallet
-            self.daemon_port = ''  # Not used in Rusty wallet
+        # elif self.selected_wallet_type == 'rusty':
+        #     self.binary_path = getattr(self.service, 'binary_path', '')
+        #     self.wallet_name = getattr(self.service, 'wallet_name', '')
+        #     self.wallet_password = getattr(self.service, 'wallet_password', '')
+        #     self.wallet_file_path = ''  # Not used in Rusty wallet
+        #     self.daemon_host = ''  # Not used in Rusty wallet
+        #     self.daemon_port = ''  # Not used in Rusty wallet
 
     def on_wallet_type_selected(self, wallet_type):
         """Called when user selects a wallet type."""
         if self.selected_wallet_type != wallet_type:
             self.selected_wallet_type = wallet_type
             # Update service manager preference
-            preference_map = {'external': 'external', 'go': 'go', 'rusty': 'rusty'}
+            preference_map = {
+                'external': 'external',
+                'go': 'go',
+                # 'rusty': 'rusty',
+                'internal': 'internal',
+            }
             self.service_manager.set_preferred_kaspa_wallet(preference_map[wallet_type])
             # Get the new service
             self.service = self.service_manager.kaspa_wallet_service
@@ -138,12 +154,12 @@ class KaspaWalletSetupPage(MDScreen):
             self.binary_path = 'kaspawallet'
             self.wallet_file_path = ''
             self.wallet_password = ''
-            self.daemon_host = '127.0.0.1'
-            self.daemon_port = '8084'
-        elif self.selected_wallet_type == 'rusty':
-            self.binary_path = 'kaspa-wallet'
-            self.wallet_name = ''
-            self.wallet_password = ''
+            self.daemon_host = str(self.service.default_daemon_host)
+            self.daemon_port = str(self.service.default_daemon_port)
+        # elif self.selected_wallet_type == 'rusty':
+        #     self.binary_path = 'kaspa-wallet'
+        #     self.wallet_name = ''
+        #     self.wallet_password = ''
 
     async def validate_configuration(self):
         """Validate the current wallet configuration."""
@@ -155,11 +171,9 @@ class KaspaWalletSetupPage(MDScreen):
 
         try:
             # Update service configuration based on selected type
-            if self.selected_wallet_type == 'external':
-                # External wallet is always valid
-                self.validation_message = 'External wallet selected - ready to use!'
-                self.is_configured = True
-                return
+            if self.selected_wallet_type == 'internal':
+                # Env-driven; detect/validate below
+                pass
 
             elif self.selected_wallet_type == 'go':
                 if hasattr(self.service, 'binary_path'):
@@ -173,13 +187,13 @@ class KaspaWalletSetupPage(MDScreen):
                 if hasattr(self.service, 'daemon_port'):
                     self.service.daemon_port = int(self.daemon_port)
 
-            elif self.selected_wallet_type == 'rusty':
-                if hasattr(self.service, 'binary_path'):
-                    self.service.binary_path = self.binary_path
-                if hasattr(self.service, 'wallet_name'):
-                    self.service.wallet_name = self.wallet_name
-                if hasattr(self.service, 'wallet_password'):
-                    self.service.wallet_password = self.wallet_password
+            # elif self.selected_wallet_type == 'rusty':
+            #     if hasattr(self.service, 'binary_path'):
+            #         self.service.binary_path = self.binary_path
+            #     if hasattr(self.service, 'wallet_name'):
+            #         self.service.wallet_name = self.wallet_name
+            #     if hasattr(self.service, 'wallet_password'):
+            #         self.service.wallet_password = self.wallet_password
 
             # Attempt detection
             detected = await self.service.detect()

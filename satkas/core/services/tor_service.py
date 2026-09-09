@@ -8,6 +8,9 @@ from satkas.core.services.base_service import BaseService
 
 
 class TorService(BaseService):
+    can_refresh = False
+    service_icon = "wan"
+    icon_style = "tor"
     default_host = '127.0.0.1'
     default_port = 9050
 

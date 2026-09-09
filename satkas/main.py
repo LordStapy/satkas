@@ -1,7 +1,12 @@
 
 import os
+import logging
+
+# Must be set before any kivy import. KIVY_NO_CONSOLELOG only skips Kivy's
+# ConsoleHandler; ~/.kivy/config.ini still resets Logger to INFO unless we
+# override via KCFG_* (takes precedence over config.ini).
 os.environ["KIVY_NO_CONSOLELOG"] = "1"
-import time
+os.environ["KCFG_KIVY_LOG_LEVEL"] = "error"
 
 from satkas.core.services import ServiceManager
 service_manager = ServiceManager()
@@ -10,33 +15,27 @@ import asyncio
 
 import traceback
 
-print('services loaded')
+from kivy.config import Config
+Config.set('input', 'mouse', 'mouse,disable_multitouch')
+
 from kivy.lang import Builder
 from kivy.base import ExceptionManager, ExceptionHandler
-from kivymd.uix.appbar import MDTopAppBar, MDTopAppBarLeadingButtonContainer, MDTopAppBarTitle, MDTopAppBarTrailingButtonContainer, MDActionTopAppBarButton
 from kivymd.uix.screen import MDScreen
 from kivy.uix.screenmanager import ScreenManager, FadeTransition
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.floatlayout import MDFloatLayout
-from kivymd.uix.label import MDLabel
-from kivymd.uix.progressindicator import MDLinearProgressIndicator
 from kivymd.theming import OptionProperty, ThemeManager
 from kivy.animation import Animation
 from kivy.clock import Clock
 from kivymd.app import MDApp
-import kivymd.icon_definitions
 
 from kivy.app import App
 
 from satkas.core.db.models import Setting
-from satkas.ui.screens.base_responsive_layout import BaseResponsiveLayout
 from satkas.ui.screens.setup_wizard import SetupWizard
 from satkas.ui.screens.dashboard_screen import DashboardScreen
-#from satkas.ui.screens.quick_swap_screen import QuickSwapScreen
 from satkas.ui.screens.quick_swap_v2 import QuickSwapV2Screen
 from kivy.utils import hex_colormap
 
-import logging
 logging.getLogger('taker').setLevel(logging.INFO)
 logging.getLogger('atomic_swap').setLevel(logging.INFO)
 hex_colormap['kaspa'] = '#70C7BA'
@@ -59,7 +58,7 @@ class KaspaThemeManager(ThemeManager):
     )
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, *kwargs)
+        super().__init__(*args, **kwargs)
         self.primary_palette = 'Kaspa'
 
 
@@ -146,6 +145,17 @@ class MainWidget(MDBoxLayout):
         nav_drawer = self.ids.nav_drawer
         nav_drawer.set_state("open" if nav_drawer.state == "close" else "close")
 
+    def select_nav_screen(self, screen_name):
+        """Switch content screen; close the drawer only when it is modal.
+
+        Desktop keeps a standard (always-open) drawer; closing that on every
+        nav tap would collapse the rail until the window is resized.
+        """
+        self.ids.screen_manager.current = screen_name
+        nav_drawer = self.ids.nav_drawer
+        if nav_drawer.drawer_type == "modal":
+            nav_drawer.set_state("close")
+
 
 class RootScreenManager(ScreenManager):
     """Root screen manager that handles switching between loading and main screens."""
@@ -198,8 +208,12 @@ class RootScreenManager(ScreenManager):
 
         # Check if database was already set up, if not, show setup wizard
         if self._db_initialized:
-            # instanciate the Taker
-            self.app.taker = self.app.taker(wallet_passwd='')
+            # Instantiate the Taker with the app's ServiceManager so
+            # orchestrators can reach kaspad/bitcoin/wallets via self.sm.
+            self.app.taker = self.app.taker(
+                wallet_passwd='',
+                service_manager=self.app.service_manager,
+            )
             # add screens to main screen
             main_screen = self.get_screen("main_screen")
             main_screen.children[0].ids.screen_manager.add_widget(
@@ -239,13 +253,6 @@ class SatKasApp(MDApp):
         if self._dashboard_screen is None:
             self._dashboard_screen = DashboardScreen(name='dashboard_screen')
         return self._dashboard_screen
-
-    #@property
-    #def quick_swap_screen(self):
-    #    """Lazy-load the quick swap screen."""
-    #    if self._quick_swap_screen is None:
-    #        self._quick_swap_screen = QuickSwapScreen(name='quick_swap_screen')
-    #    return self._quick_swap_screen
 
     @property
     def quick_swap_v2_screen(self):

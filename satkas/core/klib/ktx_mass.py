@@ -1,4 +1,11 @@
-
+from satkas.core.klib.kdatatype import (
+    Input,
+    Output,
+    OutPoint,
+    ScriptPublicKey,
+    Transaction,
+    UtxoEntry,
+)
 
 # Constants
 HASH_SIZE = 32
@@ -7,6 +14,24 @@ MASS_PER_TX_BYTE = 1
 MASS_PER_SCRIPT_PUB_KEY_BYTE = 10
 MASS_PER_SIG_OP = 1000
 KIP9_C = int(1e12)
+# Toccata fee grams; KIP-13 raw transient is 4 * size.
+NORMALIZED_TRANSIENT_BYTE_FACTOR = 2
+DUMMY_HIGH_SOMPI = 10_000 * 10**8  # 10k KAS; C/this == 1
+P2PK_SPK = b'\x20' + b'\x00' * 32 + b'\xac'  # 34
+P2SH_SPK = b'\xaa\x20' + b'\x00' * 32 + b'\x87'  # 35
+P2PK_SIGSCRIPT_SIZE = 66
+# LN (off-chain) timestamp locktime: 6 payload bytes → redeem sigscript 257.
+# On-chain DAA locktime: 4 payload bytes → 255.
+#
+# DAA 2_147_483_648 (2**31): high bit of the last of those 4 bytes is set.
+# add_u64 does not append a 0x00 sign byte (same as rusty-kaspa). If CLTV
+# treats the push as a signed script number, refunds break at this score
+# even though the payload is still 4 bytes — check actual DAA against this
+# before assuming 255 is still safe.
+#
+# DAA 4_294_967_296 (2**32): payload becomes 5 bytes → redeem 256.
+P2SH_REDEEM_SIGSCRIPT_LN = 257
+P2SH_REDEEM_SIGSCRIPT_DAA = 255
 
 
 def tx_estimated_serialized_size(tx, signature_script_size=66):
@@ -71,13 +96,51 @@ def storage_mass(inputs, outputs):
 def mass(tx):
     s_mass = storage_mass(tx.inputs, tx.outputs)
     c_mass = compute_mass(tx)
+    size = tx_estimated_serialized_size(tx)
     # print(f"Computed storage_mass: {s_mass}")
     # print(f"Computed compute_mass: {c_mass}")
-    return max(s_mass, c_mass)
+    return max(s_mass, c_mass, size * NORMALIZED_TRANSIENT_BYTE_FACTOR)
+
+
+def _dummy_input(amount_sompi, spk, signature_script_len):
+    return Input(
+        OutPoint('00' * 32, 0),
+        UtxoEntry(amount_sompi, ScriptPublicKey(0, spk), 1, False),
+        sig_op_count=b'\x01',
+        signature_script=b'\x00' * signature_script_len,
+    )
+
+
+def _dummy_output(amount_sompi, spk):
+    return Output(max(int(amount_sompi), 1), ScriptPublicKey(0, spk))
+
+
+def estimate_funding_mass(contract_sompi):
+    """1 p2pk in, p2sh contract + p2pk change. High dummy in/change so storage ≈ C/contract."""
+    contract_sompi = max(int(contract_sompi or 0), 1)
+    vin = max(DUMMY_HIGH_SOMPI, contract_sompi + DUMMY_HIGH_SOMPI)
+    tx = Transaction(
+        [_dummy_input(vin, P2PK_SPK, P2PK_SIGSCRIPT_SIZE)],
+        [_dummy_output(contract_sompi, P2SH_SPK),
+         _dummy_output(vin - contract_sompi, P2PK_SPK)],
+    )
+    return mass(tx)
+
+
+def estimate_spend_mass(input_sompi, output_sompi=None, sigscript_size=P2SH_REDEEM_SIGSCRIPT_LN):
+    """1 p2sh in, 1 p2pk out (redeem-sized sigscript)."""
+    input_sompi = max(int(input_sompi or 0), 1)
+    if output_sompi is None:
+        output_sompi = input_sompi
+    output_sompi = max(int(output_sompi), 1)
+    tx = Transaction(
+        [_dummy_input(input_sompi, P2SH_SPK, sigscript_size)],
+        [_dummy_output(output_sompi, P2PK_SPK)],
+    )
+    return mass(tx)
 
 
 if __name__ == '__main__':
-    from kdatatype import Transaction, Input, Output, OutPoint, UtxoEntry, ScriptPublicKey
     # dummy tx, we only need the amounts
     tx_inputs = [
         Input(

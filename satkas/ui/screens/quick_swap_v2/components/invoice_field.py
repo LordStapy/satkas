@@ -16,6 +16,8 @@ from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon, MDIconButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.widget import MDWidget
 
+from satkas.ui.screens.quick_swap_v2.components.attention_pulse import AttentionPulseMixin
+
 
 class InvoiceInputDialog(MDDialog):
     """
@@ -170,7 +172,7 @@ class InvoiceInputDialog(MDDialog):
             self.dismiss()
 
 
-class InvoiceField(MDCard):
+class InvoiceField(AttentionPulseMixin, MDCard):
     """
     Smart invoice field with multiple input modes:
     - Manual input (always available)
@@ -212,6 +214,7 @@ class InvoiceField(MDCard):
     
     def hide(self):
         """Hide invoice field with animation."""
+        self.stop_attention_pulse()
         self.is_visible = False
         self.invoice = ""
         self.info_label_text = ""
@@ -271,7 +274,15 @@ class InvoiceField(MDCard):
         # Hide buttons row for kas2sat after invoice is validated
         if self.swap_direction == "kas2sat":
             self.buttons_row_visible = False
-    
+
+        # Resolve the orchestrator's request_ln_invoice if it is waiting.
+        interaction = getattr(getattr(self.screen, 'controller', None), 'interaction', None)
+        if interaction is not None and interaction.is_waiting('invoice'):
+            interaction.answer('invoice', self.invoice)
+            self.stop_attention_pulse()
+            self.style = "filled"
+            self.theme_line_color = "Primary"
+
     def _validate_invoice_amount(self, invoice_data):
         """
         Validate that invoice amount matches editor BTC amount.
@@ -328,6 +339,7 @@ class InvoiceField(MDCard):
     
     def reset(self):
         """Reset all properties to default values."""
+        self.stop_attention_pulse()
         self.invoice = ""
         self.title_label_text = "Lightning Invoice"
         self.info_label_text = ""

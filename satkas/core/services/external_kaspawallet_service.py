@@ -2,13 +2,16 @@ import asyncio
 import aiohttp
 import json
 from typing import Optional, Dict, Any
-from satkas.core.services.base_service import BaseService
+from satkas.core.services.base_service import BaseService, ExternalWalletRequired
 
 
 class ExternalKaspaWalletService(BaseService):
     """
     External Kaspa Wallet Service that prompts the user to use external wallet to send and receive transactions.
     """
+    can_refresh = False
+    service_icon = "wallet-outline"
+    icon_style = "kaspa"
 
     def __init__(self):
         super().__init__()
@@ -65,15 +68,23 @@ class ExternalKaspaWalletService(BaseService):
     
     async def get_address(self) -> Optional[str]:
         """Get wallet address from external service"""
-        raise NotImplementedError("get_address method not yet implemented")
+        raise ExternalWalletRequired("Provide a receiving address from your Kaspa wallet")
 
     async def create_transaction(self, to_address: str, amount: float, fee: Optional[float] = None) -> Optional[Dict[str, Any]]:
         """Create a transaction"""
-        raise NotImplementedError("create_transaction method not yet implemented")
+        raise ExternalWalletRequired(
+            f"Create a transaction of {amount} KAS to {to_address} with your Kaspa wallet"
+        )
 
     async def send_transaction(self, to_address: str, amount: float, fee: Optional[float] = None) -> Optional[Dict[str, Any]]:
         """Send a transaction"""
-        raise NotImplementedError("send_transaction method not yet implemented")
+        raise ExternalWalletRequired(
+            f"Send {amount} KAS to {to_address} with your Kaspa wallet"
+        )
+
+    async def pay(self, destination, amount, sm=None):
+        """Alias for send_transaction to match go kaspawallet_service.pay"""
+        return await self.send_transaction(destination, amount)
 
 
 # Example usage and testing

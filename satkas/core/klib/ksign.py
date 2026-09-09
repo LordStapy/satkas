@@ -27,6 +27,9 @@ logger = logging.getLogger('ksign')
 transactionHashDomain = "TransactionHash"
 transactionIDDomain = "TransactionID"
 transactionSigningDomain = "TransactionSigningHash"
+# ECDSA sighash in rusty-kaspa is SHA-256 with this domain as a prefix, not keyed
+# Blake2b. This constant and any ECDSA signing path must be updated before we
+# spend from ECDSA addresses. We currently only send to ECDSA addresses.
 transactionSigningECDSADomain = "TransactionSigningHashECDSA"
 blockDomain = "BlockHash"
 proofOfWorkDomain = "ProofOfWorkHash"
@@ -66,9 +69,15 @@ def hash_data(hash_writer, data, dtype=None):
     elif dtype == 'domain_transaction_id':
         pass
     elif dtype == 'domain_subnetwork_id':
-        _data = bytearray(20)
-        _data[0] = data
-        data = bytes(_data)
+        # SubnetworkId is 20 bytes. Native/coinbase/registry are from_byte(n):
+        # first byte = n, remaining 19 zeros. An int is encoded that way.
+        # A full 20-byte id can be passed as bytes for custom subnetworks.
+        if isinstance(data, int):
+            _data = bytearray(20)
+            _data[0] = data
+            data = bytes(_data)
+        elif len(data) != 20:
+            raise ValueError(f'subnetwork id must be 20 bytes, got {len(data)}')
     elif dtype is None:
         if isinstance(data, str):
             data = bytes.fromhex(data)
@@ -123,7 +132,7 @@ def get_output_hash(tx, idx, hash_type, reused_values):
         return bytes(32)
 
     if hash_type.is_sig_hash_single():
-        if idx > len(tx.outputs):
+        if idx >= len(tx.outputs):
             return bytes(32)
         hash_writer = new_transaction_signing_hash_writer()
         tx_output = tx.outputs[idx]

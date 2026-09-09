@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import re
 import sys
@@ -7,8 +8,12 @@ import time
 from satkas.core.services.base_service import BaseService
 from satkas.core.db.models import Setting
 
+logger = logging.getLogger('rustykaspawallet')
+
 
 class RustyKaspaWalletService(BaseService):
+    service_icon = "wallet"
+    icon_style = "kaspa"
     default_path = 'kaspa-wallet'
 
     def __init__(self, path=None):
@@ -406,11 +411,18 @@ class RustyKaspaWalletService(BaseService):
         # print(f"Address: {address}")
         return address
 
+    async def get_new_address(self):
+        return await self.get_address()
+
     async def send_transaction(self, address, amount):
         out = await self.run_cmd(f'send {address} {amount}', pattern='password: ')
         print(f"Send transaction: {out}")
-        out2 = await self.run_cmd('1234', pattern='KAS $ ', timeout=5)
+        out2 = await self.run_cmd(self.wallet_password, pattern='KAS $ ', timeout=5)
         print(f"Send transaction 2: {out2}")
+
+    async def pay(self, destination, amount, sm=None):
+        logger.warning("rusty kaspa wallet support is experimental, use with caution")
+        return await self.send_transaction(destination, amount)
 
 
 async def main():

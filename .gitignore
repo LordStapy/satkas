@@ -6,6 +6,7 @@ satkas.egg-info/
 venv/
 build/
 dist/
+.cursor/
 
 satkas/core/db/satkas.db
 satkas/core/klib/wallet.proto

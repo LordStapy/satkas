@@ -90,7 +90,6 @@ def encode_to_base32(data):
     result = []
     for b in data:
         if int(b) >= len(CHARSET):
-            print(f"Error encoding to base32, b={b}")
             return ""
         result.append(CHARSET[b])
     return "".join(result)

@@ -18,6 +18,7 @@ class ContractAddressField(MDCard):
     contract_address = StringProperty("")
     contract_address_display = StringProperty("")  # Multi-row formatted
     title_text = StringProperty("Contract Address")
+    description_text = StringProperty("")  # Who funds this contract
     status_text = StringProperty("Waiting...")
     funded_amount = NumericProperty(0)
     is_confirmed = BooleanProperty(False)
@@ -59,9 +60,9 @@ class ContractAddressField(MDCard):
         self.contract_address = ""
         self.contract_address_display = ""
         self.title_text = "Contract Address"
+        self.description_text = ""
         self.status_text = "Waiting..."
         self.funded_amount = 0
         self.is_confirmed = False
         self.is_visible = False
         self.ids.contract_status_label.text_color = self.screen.app.theme_cls.primaryColor
-

@@ -1,0 +1,246 @@
+
+<BitcoinSetupPage>:
+    md_bg_color: app.theme_cls.backgroundColor
+
+    MDBoxLayout:
+        orientation: 'vertical'
+        spacing: dp(10)
+        padding: dp(30)
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(70)
+            spacing: dp(10)
+
+            MDLabel:
+                text: "Configure Bitcoin Monitor"
+                font_style: "Headline"
+                size_hint_y: None
+                height: dp(40)
+                halign: 'center'
+
+            MDLabel:
+                text: "Used to watch on-chain HTLC funding and spends."
+                font_style: "Body"
+                size_hint_y: None
+                height: dp(30)
+                halign: 'center'
+                theme_text_color: "Secondary"
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: dp(10)
+            size_hint_y: None
+            height: self.minimum_height
+            padding: [0, 0, 0, dp(20)]
+
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: dp(120)
+                spacing: dp(10)
+                pos_hint: {'center_x': 0.5}
+                size_hint_x: 0.6
+
+                MDLabel:
+                    text: "Monitor Type:"
+                    font_style: "Body"
+                    size_hint_y: None
+                    height: dp(30)
+
+                MDBoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: dp(30)
+                    spacing: dp(10)
+
+                    MDButton:
+                        size_hint_x: 0.5
+                        md_bg_color: app.theme_cls.primaryColor if root.selected_type == "bitcoind" else app.theme_cls.surfaceColor
+                        style: "filled" if root.selected_type == "bitcoind" else "outlined"
+                        on_release: root.on_type_selected("bitcoind")
+                        MDButtonText:
+                            text: "Bitcoind"
+                            text_color: app.theme_cls.onPrimaryColor if root.selected_type == "bitcoind" else app.theme_cls.onSurfaceColor
+
+                    MDButton:
+                        size_hint_x: 0.5
+                        md_bg_color: app.theme_cls.primaryColor if root.selected_type == "mempool" else app.theme_cls.surfaceColor
+                        style: "filled" if root.selected_type == "mempool" else "outlined"
+                        on_release: root.on_type_selected("mempool")
+                        MDButtonText:
+                            text: "Mempool"
+                            text_color: app.theme_cls.onPrimaryColor if root.selected_type == "mempool" else app.theme_cls.onSurfaceColor
+
+                MDLabel:
+                    text: [t['description'] for t in root.monitor_types if t['value'] == root.selected_type][0] if root.selected_type else ""
+                    size_hint_y: None
+                    height: dp(40)
+                    theme_text_color: "Secondary"
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint: 0.6, 1
+            pos_hint: {"center_x": 0.5}
+
+            MDScrollView:
+                size_hint_x: 1
+                size_hint_y: None
+                height: min(config_box.height, self.parent.height) if self.parent else config_box.height
+                do_scroll_x: False
+                do_scroll_y: True
+                bar_width: 4
+                scroll_y: 1
+
+                MDBoxLayout:
+                    id: config_box
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: 0
+                    padding: [dp(20), dp(20), dp(20), dp(24)]
+                    md_bg_color: app.theme_cls.surfaceContainerHighColor
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height if root.selected_type == "bitcoind" else 0
+                        spacing: dp(16)
+                        opacity: 1 if root.selected_type == "bitcoind" else 0
+                        disabled: root.selected_type != "bitcoind"
+
+                        MDTextField:
+                            text: root.host
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.host = self.text
+                            MDTextFieldHintText:
+                                text: "Host"
+
+                        MDTextField:
+                            text: root.port
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.port = self.text
+                            MDTextFieldHintText:
+                                text: "Port"
+
+                        MDTextField:
+                            text: root.rpc_user
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.rpc_user = self.text
+                            MDTextFieldHintText:
+                                text: "RPC User"
+
+                        MDTextField:
+                            text: root.rpc_pass
+                            password: True
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.rpc_pass = self.text
+                            MDTextFieldHintText:
+                                text: "RPC Password"
+
+                        MDTextField:
+                            text: root.wallet_name
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.wallet_name = self.text
+                            MDTextFieldHintText:
+                                text: "Watch-only Wallet Name"
+
+                        MDTextField:
+                            text: root.min_confirmations
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.min_confirmations = self.text
+                            MDTextFieldHintText:
+                                text: "Min Confirmations"
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height if root.selected_type == "mempool" else 0
+                        spacing: dp(16)
+                        opacity: 1 if root.selected_type == "mempool" else 0
+                        disabled: root.selected_type != "mempool"
+
+                        MDTextField:
+                            text: root.base_url
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.base_url = self.text
+                            MDTextFieldHintText:
+                                text: "Mempool API Base URL"
+
+                        MDTextField:
+                            text: root.min_confirmations
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.min_confirmations = self.text
+                            MDTextFieldHintText:
+                                text: "Min Confirmations"
+
+            Widget:
+                size_hint_y: 1
+
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(30)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.8
+
+            MDLabel:
+                text: root.validation_message
+                halign: 'center'
+                theme_text_color: "Error" if "not accessible" in root.validation_message.lower() or "failed" in root.validation_message.lower() else "Primary"
+
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: dp(50)
+            spacing: dp(20)
+            pos_hint: {'center_x': 0.5}
+            size_hint_x: 0.8
+
+            MDButton:
+                size_hint: 0.3, 1
+                on_release: root.go_back()
+                MDButtonText:
+                    text: "Back"
+
+            Widget:
+                size_hint_x: 0.4
+
+            MDButton:
+                size_hint: 0.3, 1
+                on_release: root.validate_and_complete()
+                disabled: root.is_validating
+                MDButtonText:
+                    text: "Validate & Continue"

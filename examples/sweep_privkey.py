@@ -1,5 +1,6 @@
 
 from sys import exit
+import asyncio
 
 from coincurve import PublicKeyXOnly
 
@@ -41,7 +42,7 @@ amount = dwork_amount / 1e8
 print(f"Sending {amount} KAS to {TARGET_ADDRESS}")
 
 # generate unsigned tx, sign it, serialize for json rpc
-unsigned = pay_from_address(source_address, TARGET_ADDRESS, amount=amount, fee=NETWORK_FEE)
+unsigned = asyncio.run(pay_from_address(source_address, TARGET_ADDRESS, amount=amount, fee=NETWORK_FEE))
 signed = sign_p2pk_with_key(unsigned, PRIVATE_KEY)
 rpc_tx = gen_rpc_transaction(signed)
 print(f"Ready to broadcast transaction: {rpc_tx}")

@@ -2,11 +2,7 @@
 import os
 
 from kivy.lang import Builder
-from kivy.metrics import dp
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.button import MDButton, MDButtonText
-from kivymd.uix.widget import MDWidget
-from kivymd.uix.dialog import MDDialog, MDDialogButtonContainer, MDDialogContentContainer, MDDialogHeadlineText, MDDialogSupportingText
 from kivy.properties import StringProperty, BooleanProperty
 
 

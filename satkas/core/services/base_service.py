@@ -4,7 +4,35 @@ from abc import ABC, abstractmethod
 from satkas.core.db.models import Setting
 
 
+class ExternalWalletRequired(Exception):
+    """The configured wallet is external, so the user has to act manually.
+
+    Raised by the External* services on any operation that would move funds or
+    create an invoice. Callers should surface it rather than treat it as a
+    failure: it means the operation is still possible, just not automatable.
+    """
+
+
+class PaymentStatus:
+    """What check_payment() answers about an outgoing lightning payment.
+
+    The distinction that matters is FAILED versus UNKNOWN. FAILED means the
+    wallet answered and nothing left it, so a swap built on that payment may be
+    written off. UNKNOWN means we could not ask, and IN_FLIGHT means the
+    payment may still settle: in both cases the money may yet be gone, so
+    nothing terminal may be recorded.
+    """
+
+    SETTLED = 'settled'
+    IN_FLIGHT = 'in_flight'
+    FAILED = 'failed'
+    UNKNOWN = 'unknown'
+
+
 class BaseService(ABC):
+    can_refresh = True
+    service_icon = "help-circle-outline"
+    icon_style = ""
 
     def __init__(self, *args, **kwargs):
         # List of callables to be notified when fields change
@@ -127,7 +155,7 @@ class BaseService(ABC):
                     value_type = self._infer_value_type(value)
 
                 full_key = f"{service_key}.{setting_key}"
-                print(f"Saving config: {full_key} = {value} ({value_type})")
+                # print(f"Saving config: {full_key} = {value} ({value_type})")
                 Setting.set_value(full_key, value, value_type)
 
     def reload_config(self):

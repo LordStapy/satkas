@@ -85,7 +85,7 @@
                 MDNavigationDrawerItem:
                     active_indicator_color: app.theme_cls.secondaryContainerColor
                     inactive_indicator_color: app.theme_cls.secondaryContainerColor
-                    on_release: screen_manager.current = "dashboard_screen"
+                    on_release: root.select_nav_screen("dashboard_screen")
                     MDNavigationDrawerItemText:
                         text: "Dashboard"
 
@@ -93,7 +93,7 @@
                 #MDNavigationDrawerItem:
                 #    active_indicator_color: app.theme_cls.secondaryContainerColor
                 #    inactive_indicator_color: app.theme_cls.secondaryContainerColor
-                #    on_release: screen_manager.current = "quick_swap_screen"
+                #    on_release: root.select_nav_screen("quick_swap_screen")
                 #    MDNavigationDrawerItemText:
                 #        text: "Quick Swap"
 
@@ -102,7 +102,7 @@
                 MDNavigationDrawerItem:
                     active_indicator_color: app.theme_cls.secondaryContainerColor
                     inactive_indicator_color: app.theme_cls.secondaryContainerColor
-                    on_release: screen_manager.current = "quick_swap_v2_screen"
+                    on_release: root.select_nav_screen("quick_swap_v2_screen")
                     MDNavigationDrawerItemText:
                         text: "Quick Swap V2"
 

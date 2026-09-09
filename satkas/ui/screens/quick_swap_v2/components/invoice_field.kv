@@ -1,10 +1,9 @@
-#:import dp kivy.metrics.dp
 
 <InvoiceField>:
     style: "filled"
     orientation: "vertical"
     padding: dp(12)
-    size_hint_y: None if self.is_visible else 0
+    size_hint_y: None
     height: 0 if not self.is_visible else self.minimum_height
     opacity: 0 if not self.is_visible else 1
     md_bg_color: app.theme_cls.surfaceContainerHighColor
@@ -78,6 +77,7 @@
             opacity: 1 if (root.swap_direction == "kas2sat") else 0
             #md_bg_color_disabled: app.theme_cls.secondaryContainerColor
             disabled: bool(root.invoice) or root.is_generating or not root.is_visible or not (root.swap_direction == "kas2sat" and not root.is_ln_wallet_external)
+            ripple_effect: False
             on_release: root.screen.generate_invoice() if root.screen else None
             MDButtonIcon:
                 icon: "lightning-bolt"

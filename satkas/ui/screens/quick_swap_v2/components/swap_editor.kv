@@ -1,29 +1,57 @@
-#:import dp kivy.metrics.dp
 
 <SwapEditor>:
     style: "elevated"
     #orientation: "vertical"
-    padding: dp(16)
+    padding: dp(16) if self.is_editing else dp(10)
     spacing: 0
     size_hint_y: None
-    height: dp(244) if self.is_editing else dp(60)
+    height: dp(264) if self.is_editing else dp(48)
     md_bg_color: app.theme_cls.surfaceContainerHighColor
     
     # Editing Mode - Dual card layout
     MDBoxLayout:
         orientation: "vertical"
-        spacing: dp(12)
+        spacing: 0
         size_hint_x: 1 if root.is_editing else None
         width: root.width if root.is_editing else 0
         opacity: 1 if root.is_editing else 0
         disabled: not root.is_editing
-        
+
+        # Off-chain / On-chain mode selector
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: None
+            height: dp(36)
+            spacing: dp(8)
+
+            MDButton:
+                size_hint_x: 0.5
+                style: "filled" if root.swap_mode == "offchain" else "outlined"
+                md_bg_color: app.theme_cls.primaryColor if root.swap_mode == "offchain" else app.theme_cls.surfaceColor
+                on_release: root.set_swap_mode("offchain")
+                MDButtonText:
+                    text: "Off-chain (LN)"
+                    text_color: app.theme_cls.onPrimaryColor if root.swap_mode == "offchain" else app.theme_cls.onSurfaceColor
+
+            MDButton:
+                size_hint_x: 0.5
+                style: "filled" if root.swap_mode == "onchain" else "outlined"
+                md_bg_color: app.theme_cls.primaryColor if root.swap_mode == "onchain" else app.theme_cls.surfaceColor
+                on_release: root.set_swap_mode("onchain")
+                MDButtonText:
+                    text: "On-chain"
+                    text_color: app.theme_cls.onPrimaryColor if root.swap_mode == "onchain" else app.theme_cls.onSurfaceColor
+
+        MDWidget:
+            size_hint_y: None
+            height: dp(12)
+
         # Send Amount Card
         MDCard:
             style: "filled"
             size_hint_y: None
-            height: dp(70)
-            md_bg_color: (112/255, 199/255, 186/255, 0.15) if root.swap_direction == "kas2sat" else (1, 0.6, 0, 0.15)
+            height: dp(64)
+            md_bg_color: (112/255, 199/255, 186/255, 0.15) if root.sends_kas else (1, 0.6, 0, 0.15)
             
             MDBoxLayout:
                 orientation: "horizontal"
@@ -41,20 +69,23 @@
                 MDTextField:
                     id: send_input
                     mode: "filled"
-                    #text: f"{root.kas_amount if root.swap_direction == 'kas2sat' else root.btc_amount:.8f}" if (root.kas_amount if root.swap_direction == 'kas2sat' else root.btc_amount) else ""
                     text: root.send_amount_display
-                    input_filter: "float"
+                    input_filter: None if root.quote_failed else "float"
                     font_style: "Title"
                     role: "small"
                     size_hint_x: 0.5
                     size_hint_y: None
                     height: dp(48)
                     on_text: root.on_amount_input(self, self.text)
+                    on_focus: root.on_field_focus(self, self.focus)
+                    theme_text_color: "Custom"
+                    text_color_normal: (app.theme_cls.onSurfaceVariantColor[0], app.theme_cls.onSurfaceVariantColor[1], app.theme_cls.onSurfaceVariantColor[2], 0.4 if root.send_text_faded else 1)
+                    text_color_focus: (app.theme_cls.onSurfaceColor[0], app.theme_cls.onSurfaceColor[1], app.theme_cls.onSurfaceColor[2], 0.4 if root.send_text_faded else 1)
                     MDTextFieldHintText:
                         text: "Amount"
                 
                 MDLabel:
-                    text: "KAS" if root.swap_direction == "kas2sat" else "BTC"
+                    text: "KAS" if root.sends_kas else "BTC"
                     font_style: "Title"
                     role: "medium"
                     bold: True
@@ -62,23 +93,31 @@
                     halign: "center"
                     pos_hint: {"center_y": 0.5}
                     theme_text_color: "Custom"
-                    text_color: (112/255, 199/255, 186/255, 1) if root.swap_direction == "kas2sat" else (1, 0.6, 0, 1)
-        
+                    text_color: (112/255, 199/255, 186/255, 1) if root.sends_kas else (1, 0.6, 0, 1)
+
+        MDWidget:
+            size_hint_y: None
+            height: dp(4)
+
         # Direction Switch Button
         MDIconButton:
             icon: "swap-vertical-bold"
-            style: "standard"
+            style: "outlined"
             pos_hint: {"center_x": 0.5}
             size_hint: None, None
             size: dp(48), dp(48)
             on_release: root.switch_direction()
-        
+
+        MDWidget:
+            size_hint_y: None
+            height: dp(4)
+
         # Receive Amount Card
         MDCard:
             style: "filled"
             size_hint_y: None
-            height: dp(70)
-            md_bg_color: (1, 0.6, 0, 0.15) if root.swap_direction == "kas2sat" else (112/255, 199/255, 186/255, 0.15)
+            height: dp(64)
+            md_bg_color: (1, 0.6, 0, 0.15) if root.sends_kas else (112/255, 199/255, 186/255, 0.15)
             
             MDBoxLayout:
                 orientation: "horizontal"
@@ -92,32 +131,27 @@
                     bold: True
                     size_hint_x: 0.3
                     pos_hint: {"center_y": 0.5}
-                
-                #MDLabel:
-                #    text: f"{root.btc_amount:.8f}" if root.swap_direction == "kas2sat" and root.btc_amount else (f"{root.kas_amount:.2f}" if root.kas_amount >= 1 else f"{root.kas_amount:.8f}") if root.swap_direction == "sat2kas" and root.kas_amount else "0.00"
-                #    font_style: "Title"
-                #    role: "small"
-                #    size_hint_x: 0.5
-                #    halign: "center"
-                #    pos_hint: {"center_y": 0.5}
 
                 MDTextField:
                     id: receive_input
                     mode: "filled"
-                    #text: f"{root.btc_amount if root.swap_direction == 'kas2sat' else root.kas_amount:.8f}" if (root.btc_amount if root.swap_direction == 'kas2sat' else root.kas_amount) else ""
                     text: root.receive_amount_display
-                    input_filter: "float"
+                    input_filter: None if root.quote_failed else "float"
                     font_style: "Title"
                     role: "small"
                     size_hint_x: 0.5
                     size_hint_y: None
                     height: dp(48)
                     on_text: root.on_amount_input(self, self.text)
+                    on_focus: root.on_field_focus(self, self.focus)
+                    theme_text_color: "Custom"
+                    text_color_normal: (app.theme_cls.onSurfaceVariantColor[0], app.theme_cls.onSurfaceVariantColor[1], app.theme_cls.onSurfaceVariantColor[2], 0.4 if root.receive_text_faded else 1)
+                    text_color_focus: (app.theme_cls.onSurfaceColor[0], app.theme_cls.onSurfaceColor[1], app.theme_cls.onSurfaceColor[2], 0.4 if root.receive_text_faded else 1)
                     MDTextFieldHintText:
                         text: "Amount"
                 
                 MDLabel:
-                    text: "BTC" if root.swap_direction == "kas2sat" else "KAS"
+                    text: "BTC" if root.sends_kas else "KAS"
                     font_style: "Title"
                     role: "medium"
                     bold: True
@@ -125,7 +159,8 @@
                     halign: "center"
                     pos_hint: {"center_y": 0.5}
                     theme_text_color: "Custom"
-                    text_color: (1, 0.6, 0, 1) if root.swap_direction == "kas2sat" else (112/255, 199/255, 186/255, 1)
+                    text_color: (1, 0.6, 0, 1) if root.sends_kas else (112/255, 199/255, 186/255, 1)
+
     
     # Collapsed Mode - Single row summary
     MDBoxLayout:

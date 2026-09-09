@@ -7,12 +7,13 @@ import logging
 import itertools
 
 from python_socks.async_.asyncio import Proxy
-# from dotenv import load_dotenv
-
-# load_dotenv()
 
 logger = logging.getLogger('p2p_node')
 logger.setLevel(logging.DEBUG)
+
+_DEFAULT_SEED_NODES = "exlg6u3252bnzit7mgia3tpb2yctafmo3wbev72pwmxeqg7jiywsx2yd.onion:48888," \
+                      "mgipaoe5skumwnaiep6upojid6pk5xqupya7jcen22uhgaje2yty7mqd.onion:48889," \
+                      "zca474adco66rxxg4ctt5apwwqcoljc6tpww5vjb3z3uvygireblesyd.onion:48890" 
 
 
 class NodeConnection(asyncio.Protocol):
@@ -25,6 +26,7 @@ class NodeConnection(asyncio.Protocol):
     def __init__(self, node):
         self.node = node
         self.buffer = ''
+        self.buffer_at = 0
 
     def connection_made(self, transport) -> None:
         peername = transport.get_extra_info('peername')
@@ -36,21 +38,32 @@ class NodeConnection(asyncio.Protocol):
         self.node.connected_peers[transport] = transport
 
     def data_received(self, data: bytes) -> None:
-        # split lines, sometimes socket is slow, so we get multiple messages at once
-        data_string = data.decode().strip()
-        splitted_lines = data_string.split('\n')
-        for line in splitted_lines:
+        try:
+            text = data.decode().strip()
+        except UnicodeDecodeError:
+            self.transport.close()
+            return
+        now = time.monotonic()
+        if self.buffer and now - self.buffer_at > 30:  # stalled incomplete JSON
+            self.buffer = ''
+        for line in text.split('\n'):
+            line = self.buffer + line
+            if len(line) > 256 * 1024:  # 256 KiB
+                self.buffer = ''
+                self.transport.close()
+                return
             try:
                 json.loads(line)
             except json.JSONDecodeError:
+                # Still our message (N-chunk split) → keep stitching. Else junk → drop.
                 if line.startswith('{"type'):
+                    if not self.buffer:
+                        self.buffer_at = now  # first chunk only; TTL is not sliding
                     self.buffer = line
-                    return
-                elif line.endswith('}'):
-                    line = self.buffer + line
-                    self.buffer = ''
                 else:
-                    return
+                    self.buffer = ''
+                continue
+            self.buffer = ''
             asyncio.create_task(self.node.read_message(self.transport, line))
 
     def connection_lost(self, exc: Exception | None) -> None:
@@ -201,7 +214,7 @@ class Node:
         res = await self.send_message(transport, msg)
 
     async def bootstrap_nodes(self):
-        seed_nodes = os.getenv('P2P_SEED_NODES', None)
+        seed_nodes = os.getenv('P2P_SEED_NODES', _DEFAULT_SEED_NODES)
         if seed_nodes:
             tasks = []
             for node in seed_nodes.split(','):

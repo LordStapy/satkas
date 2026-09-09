@@ -12,9 +12,12 @@ from satkas.core.klib.kgrpc import getUtxosByAddresses
 logger = logging.getLogger('ktransactions')
 
 
-def select_utxos(address, amount=0, fee=0):
-    # fetch available UTXOs
-    utxos = getUtxosByAddresses(address).get('entries', None)
+async def select_utxos(address, amount=0, fee=0, sm=None):
+    # fetch available UTXOs via service manager when provided, else kgrpc
+    if sm is not None:
+        utxos = await sm.kaspad_service.get_utxos_by_addresses(address)
+    else:
+        utxos = getUtxosByAddresses(address).get('entries', None)
     if not utxos:
         return [], 0
     selected_utxos = []
@@ -30,7 +33,8 @@ def select_utxos(address, amount=0, fee=0):
     else:
         # send all
         selected_utxos += utxos
-    logger.info(f"Selected amount: {selected_amount / 1e8} KAS\nSelected utxos:\n{selected_utxos}")
+        selected_amount = sum([int(u['utxoEntry']['amount']) for u in selected_utxos])
+    logger.debug(f"Selected amount: {selected_amount / 1e8} KAS\nSelected utxos:\n{selected_utxos}")
     return selected_utxos, selected_amount
 
 
@@ -76,16 +80,24 @@ def gen_output(address, amount):
     return Output(amount, output_spk)
 
 
-def pay_from_address(sender_address, receiver_address, amount=0, fee=0, payload=None):
+async def pay_from_address(sender_address, receiver_address, amount=0, fee=0,
+                           payload=None, sm=None, utxos=None):
     # simple function that spends utxo(s) from sender address to receiver address
     # change is sent back to sender address
     # returns an unsigned transaction
     dwork_amount = int(amount * 1e8)
     if not fee:
-        # network fee defaults to 100k dwork, or 0.001 KAS
-        fee = 100_000
-    # select outpoint and utxo_entry
-    selected_utxos, selected_amount = select_utxos(sender_address, dwork_amount, fee)
+        # network fee defaults to 10k dwork, or 0.0001 KAS
+        fee = 10000
+    if utxos is not None:
+        selected_utxos = utxos
+        selected_amount = sum(int(u['utxoEntry']['amount']) for u in utxos)
+    else:
+        selected_utxos, selected_amount = await select_utxos(
+            sender_address, dwork_amount, fee, sm=sm,
+        )
+    if not selected_utxos:
+        raise RuntimeError(f"No UTXOs selected for {sender_address}")
 
     # Craft transaction input
     tx_inputs = []
@@ -95,6 +107,9 @@ def pay_from_address(sender_address, receiver_address, amount=0, fee=0, payload=
 
     # Craft transaction output
     tx_outputs = []
+    if dwork_amount == 0:
+        # send full amount minus fees
+        dwork_amount = selected_amount - fee
     tx_output = gen_output(receiver_address, dwork_amount)
     tx_outputs.append(tx_output)
     # handle change

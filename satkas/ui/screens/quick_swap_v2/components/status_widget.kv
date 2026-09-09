@@ -1,13 +1,14 @@
-#:import dp kivy.metrics.dp
 
 <StatusWidget>:
-    style: "filled"
+    style: "outlined" if self.is_focused else "filled"
+    theme_line_color: "Custom"
+    line_color: app.theme_cls.primaryColor if self.is_focused else (0, 0, 0, 0)
     orientation: "vertical"
     padding: dp(12)
     size_hint_y: None
     height: 0 if not self.is_visible else self.minimum_height
     opacity: 0 if not self.is_visible else 1
-    md_bg_color: app.theme_cls.surfaceContainerHighColor
+    md_bg_color: app.theme_cls.primaryContainerColor if self.is_focused else app.theme_cls.surfaceContainerHighColor
     
     # Info section: Status + Countdown
     MDBoxLayout:

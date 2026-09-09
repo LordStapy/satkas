@@ -1,11 +1,28 @@
+# TODO: remote daemon without the kaspawallet binary (mobile/docker):
+# unary gRPC to kaspawalletd — not kaspad MessageStream, not klib/wallet.proto (PST).
+# https://github.com/kaspanet/kaspad/blob/master/cmd/kaspawallet/daemon/pb/kaspawalletd.proto
+# Vendor proto + stubs; map balance/new-address/pay → GetBalance/NewAddress/Send (sompi).
+# start-daemon still needs a process if we spawn it locally.
 
 import asyncio
+import logging
+import re
+
 from satkas.core.services.base_service import BaseService
 from satkas.core.db.models import Setting
 
 
+logger = logging.getLogger('kaspawallet')
+
+
 class KaspawalletService(BaseService):
+    service_icon = "wallet"
+    icon_style = "kaspa"
     default_path = 'kaspawallet'
+    default_daemon_host = '127.0.0.1'
+    default_daemon_port = 8082
+    # Banner text varies across versions; match txids by shape.
+    TXID_RE = re.compile(r'\b[0-9a-f]{64}\b', re.IGNORECASE)
 
     def __init__(self, path=None):
         super().__init__()
@@ -21,8 +38,10 @@ class KaspawalletService(BaseService):
         self.kaspad_host = Setting.get_value("service.kaspad.host", 'kaspad.satkas.com')
         self.kaspad_port = Setting.get_value("service.kaspad.port", 16110)
 
-        self.daemon_host = '127.0.0.1'
-        self.daemon_port = 8082
+        self.daemon_host = Setting.get_value(
+            "service.kaspawallet_go.daemon_host", self.default_daemon_host)
+        self.daemon_port = Setting.get_value(
+            "service.kaspawallet_go.daemon_port", self.default_daemon_port)
         self.internal_daemon = False
         self.internal_daemon_task = None
         self.internal_daemon_process = None
@@ -53,14 +72,14 @@ class KaspawalletService(BaseService):
             },
             'daemon_host': {
                 'attr': 'daemon_host',
-                'default': None,
+                'default': self.default_daemon_host,
                 'fallback': None,
                 'type': str,
                 'env': 'KASPAWALLET_DAEMON_HOST'
             },
             'daemon_port': {
                 'attr': 'daemon_port',
-                'default': None,
+                'default': self.default_daemon_port,
                 'fallback': None,
                 'type': int,
                 'env': 'KASPAWALLET_DAEMON_PORT'
@@ -139,17 +158,28 @@ class KaspawalletService(BaseService):
             self._notify_change(['is_enabled'])
 
     @staticmethod
-    async def run(cmd):
-        p = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    async def run(*args):
+        p = await asyncio.create_subprocess_exec(
+            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         out, err = await p.communicate()
         return out, err
 
+    def _optional_wallet_flags(self):
+        """Omit -f/-p when empty so kaspawallet uses its default keys file."""
+        args = []
+        path = (self.wallet_file_path or '').strip()
+        if path:
+            args.extend(['-f', path])
+        password = self.wallet_password or ''
+        if password:
+            args.extend(['-p', password])
+        return args
+
     async def start_internal_daemon(self):
         self.internal_daemon_process = await asyncio.create_subprocess_exec(
-            f"{self.binary_path}", 'start-daemon',
-            '-f', self.wallet_file_path,
+            self.binary_path, 'start-daemon',
+            *self._optional_wallet_flags(),
             '-s', f"{self.kaspad_host}:{self.kaspad_port}",
             '-l', f"{self.daemon_host}:{self.daemon_port}",
             stdout=asyncio.subprocess.PIPE,
@@ -161,7 +191,7 @@ class KaspawalletService(BaseService):
         # await asyncio.sleep(5)
 
     async def detect(self):
-        out, err = await self.run(f"{self.binary_path} version")
+        out, err = await self.run(self.binary_path, 'version')
         out = out.decode().strip()
         if 'kaspawallet version' in out:
             self.is_detected = True
@@ -218,18 +248,24 @@ class KaspawalletService(BaseService):
                 break
 
     async def get_new_address(self):
-        out, err = await self.run(f"{self.binary_path} new-address -d {self.daemon_host}:{self.daemon_port}")
+        out, err = await self.run(
+            self.binary_path, 'new-address',
+            '-d', f"{self.daemon_host}:{self.daemon_port}",
+        )
         try:
             out = out.decode().strip()
             address = out.split(':', maxsplit=1)[1].strip()
-            print(f"New address: {address}")
+            logger.debug(f"New address: {address}")
             return address
         except Exception as e:
-            print(f"Error getting new address: {e}")
+            logger.error(f"Error getting new address: {e}")
             return False
 
     async def get_balance(self):
-        out, err = await self.run(f"{self.binary_path} balance -d {self.daemon_host}:{self.daemon_port}")
+        out, err = await self.run(
+            self.binary_path, 'balance',
+            '-d', f"{self.daemon_host}:{self.daemon_port}",
+        )
         out = out.decode().strip()
         try:
             balance = out.split()[-1]
@@ -247,11 +283,27 @@ class KaspawalletService(BaseService):
             balance = 0
         return balance
 
-    async def pay(self, destination, amount):
+    async def pay(self, destination, amount, sm=None):
+        """Send KAS. Returns the transaction id, or None if none could be parsed.
+
+        None is not proof that nothing was sent — callers must treat a missing
+        txid as a payment without a receipt.
+        """
         out, err = await self.run(
-            f"{self.binary_path} send -d {self.daemon_host}:{self.daemon_port} -t {destination} -v {amount} "
-            f"-p {self.wallet_password} -f {self.wallet_file_path}")
+            self.binary_path, 'send',
+            '-d', f"{self.daemon_host}:{self.daemon_port}",
+            '-t', destination,
+            '-v', str(amount),
+            *self._optional_wallet_flags(),
+        )
         out = out.decode().strip()
-        print(f"Pay result: {out}")
-        print(f"Pay error: {err.decode()}")
-        return out
+        err = err.decode().strip()
+        if err:
+            logger.error(f"kaspawallet send: {err}")
+        txids = self.TXID_RE.findall(out)
+        if not txids:
+            logger.error(f"kaspawallet send gave no transaction id: {out}")
+            return None
+        # Compound sends print one id per tx; the last pays the destination.
+        logger.info(f"kaspawallet sent {amount} KAS to {destination}: {txids[-1]}")
+        return txids[-1]

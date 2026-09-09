@@ -3,7 +3,7 @@ import os
 
 from kivy.lang import Builder
 from kivymd.uix.screen import MDScreen
-from kivy.properties import StringProperty, BooleanProperty, ObjectProperty
+from kivy.properties import StringProperty, BooleanProperty
 import asyncio
 
 

@@ -5,16 +5,21 @@ import logging
 
 from dotenv import load_dotenv
 
+from satkas.core.services.service_manager import ServiceManager
 from satkas.core.swapper.atomic_swap import AtomicSwap
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
+sm = ServiceManager()
+sm.set_preferred_bitcoin_monitor('mempool')
+sm.set_preferred_kaspa_monitor('explorer')
+sm.enable()
 
 SENDER_ADDRESS = ''
 RECEIVER_ADDRESS = ''
-SENDER_PRIVATE_KEY = None  # bytes.fromhex('')
-RECEIVER_PRIVATE_KEY = None  # bytes.fromhex('')
+SENDER_PRIVATE_KEY = bytes.fromhex('')
+RECEIVER_PRIVATE_KEY = bytes.fromhex('')
 
 INVOICE = ''
 
@@ -36,8 +41,6 @@ if sender_prefix != network_prefix or receiver_prefix != network_prefix:
     sys.exit(1)
 
 swap = AtomicSwap(
-    kas_rpc_server=os.getenv('KAS_RPC_SERVER', '127.0.0.1'),
-    ln_rpc_server=os.getenv('LN_RPC_SERVER', ''),
     invoice=invoice,
     sender_address=sender_address,
     sender_private_key=SENDER_PRIVATE_KEY,
@@ -49,6 +52,9 @@ swap = AtomicSwap(
 swap.decode_ln_invoice()
 swap.gen_contract_address()
 utxo_sum = swap.check_utxo()
+if not utxo_sum:
+    print('No UTXOs found, exiting...')
+    sys.exit(1)
 print(f"Found UTXOs totaling {utxo_sum} KAS")
 secret = input('Insert secret (in hex format) to redeem or press Enter to refund: ').strip()
 secret = bytes.fromhex(secret) if secret else None

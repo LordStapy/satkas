@@ -71,16 +71,17 @@
                         text: "Go Wallet"
                         text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "go" else app.theme_cls.onSurfaceColor
 
-                MDButton:
-                    size_hint_x: 0.33
-                    md_bg_color: app.theme_cls.primaryColor if root.selected_wallet_type == "rusty" else app.theme_cls.surfaceColor
-                    style: "filled" if root.selected_wallet_type == "rusty" else "outlined"
-                    theme_text_color: "Custom"
-                    on_release: root.on_wallet_type_selected("rusty")
-
-                    MDButtonText:
-                        text: "Rusty"
-                        text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "rusty" else app.theme_cls.onSurfaceColor
+                # Rusty wallet disabled: untested
+                # MDButton:
+                #     size_hint_x: 0.33
+                #     md_bg_color: app.theme_cls.primaryColor if root.selected_wallet_type == "rusty" else app.theme_cls.surfaceColor
+                #     style: "filled" if root.selected_wallet_type == "rusty" else "outlined"
+                #     theme_text_color: "Custom"
+                #     on_release: root.on_wallet_type_selected("rusty")
+                #
+                #     MDButtonText:
+                #         text: "Rusty"
+                #         text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "rusty" else app.theme_cls.onSurfaceColor
 
             # Description of selected wallet type
             MDLabel:
@@ -90,150 +91,180 @@
                 height: dp(30)
                 theme_text_color: "Secondary"
 
-        # Configuration section (only shown for non-external wallets)
-        MDScrollView:
-            #canvas:
-            #    Color:
-            #        rgba: 0,1,1,0.3
-            #    Rectangle:
-            #        pos: self.pos
-            #        size: self.size
-            size_hint: 0.6, 0.8
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint: 0.6, 1
             pos_hint: {"center_x": 0.5}
-            do_scroll_x: False
-            so_scroll_y: True
-            bar_width: 4
 
-            MDBoxLayout:
-                id: config_section
-                orientation: 'vertical'
-                size_hint_y: None
-                #height: dp(400) if root.selected_wallet_type != "external" else 0
-                height: {"external": 0, "go": dp(365), "rusty": dp(300)}[root.selected_wallet_type]
-                spacing: dp(15)
-                padding: [dp(15), dp(20), dp(15), dp(20)]
-                pos_hint: {'center_x': 0.5}
+            MDScrollView:
                 size_hint_x: 1
-                md_bg_color: app.theme_cls.primaryContainerColor if root.selected_wallet_type != "external" else app.theme_cls.backgroundColor
-                opacity: 1 if root.selected_wallet_type != "external" else 0
-                disabled: root.selected_wallet_type == "external"
+                size_hint_y: None
+                height: min(config_box.height, self.parent.height) if self.parent else config_box.height
+                do_scroll_x: False
+                do_scroll_y: True
+                bar_width: 4
+                scroll_y: 1
 
-                # Binary path (for Go and Rusty wallets)
-                MDTextField:
-                    id: binary_path_field
-                    text: root.binary_path
-                    helper_text: "Path to the wallet executable"
-                    helper_text_mode: "persistent"
-                    write_tab: False
-                    multiline: False
-                    on_text: root.on_binary_path_text(self.text)
-                    size_hint_x: 1
-                    MDTextFieldHintText:
-                        text: "Wallet Binary Path"
-
-                # Wallet file path (Go wallet only)
-                #MDTextField:
-                #    id: wallet_file_field
-                #    text: root.wallet_file_path
-                #    helper_text: "Path to the wallet file (.json)"
-                #    helper_text_mode: "persistent"
-                #    on_text: root.on_wallet_file_path_text(self.text)
-                #    size_hint_x: 1
-                #    opacity: 1 if root.selected_wallet_type == "go" else 0
-                #    disabled: root.selected_wallet_type != "go"
-                #    height: 0 if root.selected_wallet_type != "go" else dp(56)
-                #    MDTextFieldHintText:
-                #        text: "Wallet File Path"
-
-                # Wallet name (Rusty wallet only)
-                #MDTextField:
-                #    id: wallet_name_field
-                #    text: root.wallet_name
-                #    helper_text: "Name of the wallet to use"
-                #    helper_text_mode: "persistent"
-                #    on_text: root.on_wallet_name_text(self.text)
-                #    size_hint_x: 1
-                #    opacity: 1 if root.selected_wallet_type == "rusty" else 0
-                #    disabled: root.selected_wallet_type != "rusty"
-                #    height: 0 if root.selected_wallet_type != "rusty" else dp(56)
-                #    MDTextFieldHintText:
-                #        text: "Wallet Name"
-
-                # Wallet file / name (unified widget for go and rusty)
-                MDTextField:
-                    id: wallet_file_field
-                    text: root.wallet_file_path if root.selected_wallet_type == "go" else root.wallet_name
-                    helper_text: "Path to the wallet file (.json)" if root.selected_wallet_type == "go" else "Name of the wallet to use"
-                    helper_text_mode: "persistent"
-                    write_tab: False
-                    multiline: False
-                    on_text: root.on_wallet_file_path_text(self.text) if root.selected_wallet_type == "go" else root.on_wallet_name_text(self.text)
-                    size_hint_x: 1
-                    opacity: 1 if root.selected_wallet_type != "external" else 0
-                    disabled: root.selected_wallet_type == "external"
-                    height: dp(56) if root.selected_wallet_type != "external" else 0
-                    MDTextFieldHintText:
-                        text: "Wallet File Path" if root.selected_wallet_type == "go" else "Wallet Name"
-
-                # Wallet password (for Go and Rusty wallets)
-                MDTextField:
-                    id: wallet_password_field
-                    text: root.wallet_password
-                    helper_text: "Password to unlock the wallet"
-                    helper_text_mode: "persistent"
-                    write_tab: False
-                    multiline: False
-                    password: True
-                    on_text: root.on_wallet_password_text(self.text)
-                    size_hint_x: 1
-                    MDTextFieldHintText:
-                        text: "Wallet Password"
-
-                # Daemon settings (Go wallet only)
                 MDBoxLayout:
-                    orientation: 'horizontal'
-                    spacing: dp(15)
+                    id: config_box
+                    orientation: 'vertical'
                     size_hint_y: None
-                    height: dp(56) if root.selected_wallet_type == "go" else 0
-                    opacity: 1 if root.selected_wallet_type == "go" else 0
-                    disabled: root.selected_wallet_type != "go"
-
-                    MDTextField:
-                        id: daemon_host_field
-                        text: root.daemon_host
-                        size_hint_x: 0.7
-                        write_tab: False
-                        multiline: False
-                        on_text: root.on_daemon_host_text(self.text)
-                        MDTextFieldHintText:
-                            text: "Daemon Host"
-
-                    MDTextField:
-                        id: daemon_port_field
-                        text: root.daemon_port
-                        size_hint_x: 0.3
-                        write_tab: False
-                        multiline: False
-                        input_filter: 'int'
-                        on_text: root.on_daemon_port_text(self.text)
-                        MDTextFieldHintText:
-                            text: "Daemon Port"
-
-                # Use defaults button (only for non-external wallets)
-                MDBoxLayout:
-                    size_hint_y: None
-                    height: dp(40)
-                    #pos_hint: {'center_x': 0.5}
-                    size_hint_x: 0.6
+                    height: 0 if root.selected_wallet_type == "external" else self.minimum_height
+                    spacing: 0
+                    padding: [dp(20), dp(20), dp(20), dp(24)] if root.selected_wallet_type != "external" else 0
+                    size_hint_x: 1
+                    md_bg_color: app.theme_cls.surfaceContainerHighColor if root.selected_wallet_type != "external" else app.theme_cls.backgroundColor
                     opacity: 1 if root.selected_wallet_type != "external" else 0
                     disabled: root.selected_wallet_type == "external"
 
-                    MDButton:
-                        on_release: root.use_defaults()
-                        #pos_hint: {'center_x': 0.5}
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height if root.selected_wallet_type == "go" else 0
+                        spacing: dp(16)
+                        opacity: 1 if root.selected_wallet_type == "go" else 0
+                        disabled: root.selected_wallet_type != "go"
 
-                        MDButtonText:
-                            text: "Use Default Settings"
+                        MDTextField:
+                            text: root.binary_path
+                            write_tab: False
+                            multiline: False
+                            size_hint_y: None
+                            height: dp(56) if root.selected_wallet_type == "go" else 0
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_binary_path_text(self.text)
+                            MDTextFieldHintText:
+                                text: "Wallet Binary Path"
+
+                        MDTextField:
+                            text: root.wallet_file_path
+                            write_tab: False
+                            multiline: False
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_wallet_file_path_text(self.text)
+                            MDTextFieldHintText:
+                                text: "Wallet File Path"
+
+                        MDTextField:
+                            text: root.wallet_password
+                            write_tab: False
+                            multiline: False
+                            password: True
+                            size_hint_y: None
+                            height: dp(56)
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_wallet_password_text(self.text)
+                            MDTextFieldHintText:
+                                text: "Wallet Password"
+
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            spacing: dp(15)
+                            size_hint_y: None
+                            height: dp(56)
+
+                            MDTextField:
+                                text: root.daemon_host
+                                size_hint_x: 0.7
+                                write_tab: False
+                                multiline: False
+                                theme_text_color: "Custom"
+                                text_color_normal: app.theme_cls.onSurfaceColor
+                                text_color_focus: app.theme_cls.onSurfaceColor
+                                on_text: root.on_daemon_host_text(self.text)
+                                MDTextFieldHintText:
+                                    text: "Daemon Host"
+
+                            MDTextField:
+                                text: root.daemon_port
+                                size_hint_x: 0.3
+                                write_tab: False
+                                multiline: False
+                                input_filter: 'int'
+                                theme_text_color: "Custom"
+                                text_color_normal: app.theme_cls.onSurfaceColor
+                                text_color_focus: app.theme_cls.onSurfaceColor
+                                on_text: root.on_daemon_port_text(self.text)
+                                MDTextFieldHintText:
+                                    text: "Daemon Port"
+
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: dp(40) if root.selected_wallet_type == "go" else 0
+                            size_hint_x: 0.6
+                            MDButton:
+                                on_release: root.use_defaults()
+                                MDButtonText:
+                                    text: "Use Default Settings"
+
+                    # Rusty wallet config disabled: untested
+                    # MDBoxLayout:
+                    #     orientation: 'vertical'
+                    #     size_hint_y: None
+                    #     height: self.minimum_height if root.selected_wallet_type == "rusty" else 0
+                    #     spacing: dp(16)
+                    #     opacity: 1 if root.selected_wallet_type == "rusty" else 0
+                    #     disabled: root.selected_wallet_type != "rusty"
+                    #
+                    #     MDTextField:
+                    #         text: root.binary_path
+                    #         write_tab: False
+                    #         multiline: False
+                    #         size_hint_y: None
+                    #         height: dp(56) if root.selected_wallet_type == "rusty" else 0
+                    #         theme_text_color: "Custom"
+                    #         text_color_normal: app.theme_cls.onSurfaceColor
+                    #         text_color_focus: app.theme_cls.onSurfaceColor
+                    #         on_text: root.on_binary_path_text(self.text)
+                    #         MDTextFieldHintText:
+                    #             text: "Wallet Binary Path"
+                    #
+                    #     MDTextField:
+                    #         text: root.wallet_name
+                    #         write_tab: False
+                    #         multiline: False
+                    #         size_hint_y: None
+                    #         height: dp(56)
+                    #         theme_text_color: "Custom"
+                    #         text_color_normal: app.theme_cls.onSurfaceColor
+                    #         text_color_focus: app.theme_cls.onSurfaceColor
+                    #         on_text: root.on_wallet_name_text(self.text)
+                    #         MDTextFieldHintText:
+                    #             text: "Wallet Name"
+                    #
+                    #     MDTextField:
+                    #         text: root.wallet_password
+                    #         write_tab: False
+                    #         multiline: False
+                    #         password: True
+                    #         size_hint_y: None
+                    #         height: dp(56)
+                    #         theme_text_color: "Custom"
+                    #         text_color_normal: app.theme_cls.onSurfaceColor
+                    #         text_color_focus: app.theme_cls.onSurfaceColor
+                    #         on_text: root.on_wallet_password_text(self.text)
+                    #         MDTextFieldHintText:
+                    #             text: "Wallet Password"
+                    #
+                    #     MDBoxLayout:
+                    #         size_hint_y: None
+                    #         height: dp(40) if root.selected_wallet_type == "rusty" else 0
+                    #         size_hint_x: 0.6
+                    #         MDButton:
+                    #             on_release: root.use_defaults()
+                    #             MDButtonText:
+                    #                 text: "Use Default Settings"
+
+            Widget:
+                size_hint_y: 1
 
         # Validation message
         MDBoxLayout:

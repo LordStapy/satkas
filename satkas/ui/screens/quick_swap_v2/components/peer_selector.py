@@ -2,6 +2,8 @@
 Peer Selector Component - Compact peer selection with status
 """
 
+import os
+
 from kivy.animation import Animation
 from kivy.properties import StringProperty, BooleanProperty, ListProperty
 from kivy.metrics import dp
@@ -39,6 +41,10 @@ class PeerSelectorCard(MDCard):
     screen = None
     
     def __init__(self, **kwargs):
+        # --peer / MAKER_ENDPOINT pins the selector to a single onion.
+        if peer := os.getenv("MAKER_ENDPOINT"):
+            kwargs.setdefault("available_peers", [peer])
+            kwargs.setdefault("selected_peer", peer)
         super().__init__(**kwargs)
         self.peer_menu = None
         self.info_dialog = None
@@ -92,13 +98,46 @@ class PeerSelectorCard(MDCard):
         if rate_info is not None:
             self.peer_rate_info = rate_info
         elif editor is not None:
-            # Auto-calculate from current direction's rate
-            current_rate = editor.kas2sat_rate if editor.swap_direction == 'kas2sat' else editor.sat2kas_rate
-            if current_rate > 0:
-                self.peer_rate_info = f"Rate: {current_rate:.2f} sats/KAS"
-            else:
-                self.peer_rate_info = "Rate: ..."
+            self.peer_rate_info = self._format_rate_info(editor)
         # If neither rate_info nor editor provided, keep existing rate_info
+
+    @staticmethod
+    def _format_rate_info(editor) -> str:
+        """Build rate display from the active mode's rate pair (LN vs on-chain)."""
+        if editor.swap_mode == "onchain":
+            mode_label = "On-chain"
+            forward = editor.kas2btc_rate
+            reverse = editor.btc2kas_rate
+            forward_name = "KAS -> BTC"
+            reverse_name = "BTC -> KAS"
+        else:
+            mode_label = "LN"
+            forward = editor.kas2sat_rate
+            reverse = editor.sat2kas_rate
+            forward_name = "KAS -> SAT"
+            reverse_name = "SAT -> KAS"
+
+        current = editor.get_current_rate()
+        if current <= 0 and forward <= 0 and reverse <= 0:
+            return f"{mode_label} rate: ..."
+
+        # Prefer the active direction; fall back to whichever rate we have.
+        if current > 0:
+            direction = editor.swap_direction
+            dir_label = {
+                "kas2sat": "KAS -> SAT",
+                "sat2kas": "SAT -> KAS",
+                "kas2btc": "KAS -> BTC",
+                "btc2kas": "BTC -> KAS",
+            }.get(direction, "")
+            return f"{mode_label} {dir_label}: {current:.2f} sats/KAS"
+
+        parts = []
+        if forward > 0:
+            parts.append(f"{forward_name} {forward:.2f}")
+        if reverse > 0:
+            parts.append(f"{reverse_name} {reverse:.2f}")
+        return f"{mode_label}: " + " | ".join(parts) + " sats/KAS"
     
     def update_display_name(self, *args):
         """Calculate and update display name with truncation based on available space.
@@ -192,8 +231,11 @@ class PeerSelectorCard(MDCard):
         # Reset rates and restart refresh
         if self.screen:
             # Reset cached rates since peer changed
+            self.screen.ids.swap_editor.last_quote = None
             self.screen.ids.swap_editor.kas2sat_rate = 0
             self.screen.ids.swap_editor.sat2kas_rate = 0
+            self.screen.ids.swap_editor.kas2btc_rate = 0
+            self.screen.ids.swap_editor.btc2kas_rate = 0
             
             if peer == "auto":
                 self.update_status("checking", "Finding best rate...")
@@ -206,24 +248,29 @@ class PeerSelectorCard(MDCard):
     
     def show_peer_info(self):
         """Show detailed peer information in dialog."""
-        # Build info text with consistent 4-line structure
+        if self.info_dialog is not None:
+            self.info_dialog.dismiss()
+
+        # Build info text with consistent structure
         if self.selected_peer == "auto":
             mode_text = "Mode: Auto-select"
             peer_text = f"Peer: {self.actual_peer if self.actual_peer else 'Checking...'}"
         else:
             mode_text = "Mode: Manual"
             peer_text = f"Peer: {self.selected_peer}"
+
+        rates_text = self._format_both_rates_for_mode()
         
         # Create label with live-updating text 
         self.info_label = MDLabel(
             text=f"{mode_text}\n"
                  f"{peer_text}\n"
                  f"Status: {self.peer_status}\n"
-                 f"{self.peer_rate_info}",
+                 f"{rates_text}",
             theme_text_color="Secondary",
             adaptive_height=True,
             font_style="Body",
-            role="small"
+            role="medium"
         )
         
         # Bind properties to update label in real-time
@@ -235,12 +282,7 @@ class PeerSelectorCard(MDCard):
         self.info_dialog = MDDialog(
             MDDialogHeadlineText(text="Peer Information"),
             MDDialogContentContainer(
-                # MDDivider(),
                 self.info_label,
-                # MDDivider(),
-                # orientation="vertical",
-                # spacing=dp(8),
-                # padding=dp(16),
             ),
             MDDialogButtonContainer(
                 MDWidget(),
@@ -253,38 +295,63 @@ class PeerSelectorCard(MDCard):
             ),
             auto_dismiss=True,
         )
+        # Unbind on any dismiss path (Close button or outside tap).
+        self.info_dialog.bind(on_dismiss=self._on_info_dialog_dismissed)
         self.info_dialog.open()
+
+    def _format_both_rates_for_mode(self) -> str:
+        """Show both direction rates for the active chain mode."""
+        editor = None
+        if self.screen and hasattr(self.screen, 'ids') and 'swap_editor' in self.screen.ids:
+            editor = self.screen.ids.swap_editor
+        if editor is None:
+            return self.peer_rate_info
+
+        if editor.swap_mode == "onchain":
+            return (
+                f"On-chain rates:\n"
+                f"  KAS -> BTC: {editor.kas2btc_rate:.2f} sats/KAS\n"
+                f"  BTC -> KAS: {editor.btc2kas_rate:.2f} sats/KAS"
+            )
+        return (
+            f"LN rates:\n"
+            f"  KAS -> SAT: {editor.kas2sat_rate:.2f} sats/KAS\n"
+            f"  SAT -> KAS: {editor.sat2kas_rate:.2f} sats/KAS"
+        )
     
     def _update_info_label(self, *args):
         """Update the info label text when properties change."""
         if self.info_label:
-            # Build text with consistent 4-line structure
+            # Build text with consistent structure
             if self.selected_peer == "auto":
                 mode_text = "Mode: Auto-select"
                 peer_text = f"Peer: {self.actual_peer if self.actual_peer else 'Checking...'}"
             else:
                 mode_text = "Mode: Manual"
                 peer_text = f"Peer: {self.selected_peer}"
+
+            rates_text = self._format_both_rates_for_mode()
             
             self.info_label.text = (
                 f"{mode_text}\n"
                 f"{peer_text}\n"
                 f"Status: {self.peer_status}\n"
-                f"{self.peer_rate_info}"
+                f"{rates_text}"
             )
-    
-    def _close_info_dialog(self):
-        """Close dialog and unbind updates."""
-        # Unbind to prevent memory leaks
+
+    def _on_info_dialog_dismissed(self, *args):
+        """Clear live binds whether closed by Close or outside tap."""
         self.unbind(selected_peer=self._update_info_label)
         self.unbind(actual_peer=self._update_info_label)
         self.unbind(peer_status=self._update_info_label)
         self.unbind(peer_rate_info=self._update_info_label)
-        
+        self.info_dialog = None
+        self.info_label = None
+    
+    def _close_info_dialog(self):
+        """Close dialog; unbind happens in on_dismiss."""
         if self.info_dialog:
             self.info_dialog.dismiss()
-            self.info_dialog = None
-            self.info_label = None
     
     def collapse(self):
         """Collapse peer selector with animation."""

@@ -4,9 +4,7 @@ from functools import partial
 
 from kivy.lang import Builder
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.screenmanager import MDScreenManager
 from kivy.properties import StringProperty, ObjectProperty
-from kivy.clock import Clock
 
 from satkas.ui.screens.setup_wizard.pages import (
     LandingPage,
@@ -14,6 +12,8 @@ from satkas.ui.screens.setup_wizard.pages import (
     KaspadSetupPage,
     KaspaWalletSetupPage,
     LnWalletSetupPage,
+    BitcoinSetupPage,
+    BtcWalletSetupPage,
     PasswordSetupPage
 )
 from satkas.core.swapper.taker import Taker
@@ -46,6 +46,8 @@ class SetupWizard(MDScreen):
             'kaspad_setup': KaspadSetupPage(name='kaspad_setup'),
             'kaspa_wallet_setup': KaspaWalletSetupPage(name='kaspa_wallet_setup'),
             'ln_wallet_setup': LnWalletSetupPage(name='ln_wallet_setup'),
+            'bitcoin_setup': BitcoinSetupPage(name='bitcoin_setup'),
+            'btc_wallet_setup': BtcWalletSetupPage(name='btc_wallet_setup'),
             'password_setup': PasswordSetupPage(name='password_setup')
         }
 
@@ -57,11 +59,15 @@ class SetupWizard(MDScreen):
         self.pages['kaspad_setup'].on_back = partial(self.go_to_tor_setup, direction='right')
         self.pages['kaspa_wallet_setup'].on_next = self.go_to_ln_wallet_setup
         self.pages['kaspa_wallet_setup'].on_back = partial(self.go_to_kaspad_setup, direction='right')
-        self.pages['ln_wallet_setup'].on_next = self.complete_setup  #self.go_to_password_setup  # <- disabled for now, password isn't ready yet
+        self.pages['ln_wallet_setup'].on_next = self.go_to_bitcoin_setup
         self.pages['ln_wallet_setup'].on_back = partial(self.go_to_kaspa_wallet_setup, direction='right')
+        self.pages['bitcoin_setup'].on_next = self.go_to_btc_wallet_setup
+        self.pages['bitcoin_setup'].on_back = partial(self.go_to_ln_wallet_setup, direction='right')
+        self.pages['btc_wallet_setup'].on_next = self.complete_setup  # password disabled
+        self.pages['btc_wallet_setup'].on_back = partial(self.go_to_bitcoin_setup, direction='right')
         # password setup currently disabled
         self.pages['password_setup'].on_next = self.complete_setup
-        self.pages['password_setup'].on_back = partial(self.go_to_ln_wallet_setup, direction='right')
+        self.pages['password_setup'].on_back = partial(self.go_to_btc_wallet_setup, direction='right')
 
     def on_enter(self):
         """Called when the wizard screen is entered."""
@@ -114,6 +120,20 @@ class SetupWizard(MDScreen):
         self.screen_manager.current = 'ln_wallet_setup'
         self._update_step_indicator()
 
+    def go_to_bitcoin_setup(self, direction='left'):
+        """Navigate to Bitcoin monitor setup page."""
+        self.current_step = 'bitcoin_setup'
+        self.screen_manager.transition.direction = direction
+        self.screen_manager.current = 'bitcoin_setup'
+        self._update_step_indicator()
+
+    def go_to_btc_wallet_setup(self, direction='left'):
+        """Navigate to BTC wallet setup page."""
+        self.current_step = 'btc_wallet_setup'
+        self.screen_manager.transition.direction = direction
+        self.screen_manager.current = 'btc_wallet_setup'
+        self._update_step_indicator()
+
     def go_to_password_setup(self, direction='left'):
         """Navigate to password setup page."""
         self.current_step = 'password_setup'
@@ -141,7 +161,7 @@ class SetupWizard(MDScreen):
         # we don't need some stuff if we are re-doing the Wizard after the app was already initialized
         if not isinstance(self.app.taker, Taker):
             print(f"Instantiating new taker in setup_wizard.complete_setup")
-            self.app.taker = self.app.taker(wallet_passwd='')
+            self.app.taker = self.app.taker(wallet_passwd='', service_manager=self.app.service_manager)
         
             # Add screens to main screen
             self.manager.get_screen('main_screen').children[0].ids.screen_manager.add_widget(
@@ -185,6 +205,14 @@ class SetupWizard(MDScreen):
         # Save LN wallet service config
         if hasattr(service_manager, 'ln_wallet_service'):
             service_manager.ln_wallet_service.save_config()
+
+        # Save Bitcoin monitor service config
+        if hasattr(service_manager, 'bitcoin_service'):
+            service_manager.bitcoin_service.save_config()
+
+        # Save BTC wallet service config
+        if hasattr(service_manager, 'btc_wallet_service'):
+            service_manager.btc_wallet_service.save_config()
 
         # Save wallet preferences through service manager
         service_manager.save_wallet_preferences()

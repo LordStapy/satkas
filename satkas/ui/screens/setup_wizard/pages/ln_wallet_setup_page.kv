@@ -57,7 +57,7 @@
                     spacing: dp(10)
 
                     MDButton:
-                        size_hint_x: 0.5
+                        size_hint_x: 0.33
                         md_bg_color: app.theme_cls.primaryColor if root.selected_wallet_type == "external" else app.theme_cls.surfaceColor
                         style: "filled" if root.selected_wallet_type == "external" else "outlined"
                         theme_text_color: "Custom"
@@ -68,7 +68,7 @@
                             text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "external" else app.theme_cls.onSurfaceColor
 
                     MDButton:
-                        size_hint_x: 0.5
+                        size_hint_x: 0.33
                         md_bg_color: app.theme_cls.primaryColor if root.selected_wallet_type == "lnbits" else app.theme_cls.surfaceColor
                         style: "filled" if root.selected_wallet_type == "lnbits" else "outlined"
                         theme_text_color: "Custom"
@@ -78,6 +78,17 @@
                             text: "LNBits"
                             text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "lnbits" else app.theme_cls.onSurfaceColor
 
+                    MDButton:
+                        size_hint_x: 0.33
+                        md_bg_color: app.theme_cls.primaryColor if root.selected_wallet_type == "lncli" else app.theme_cls.surfaceColor
+                        style: "filled" if root.selected_wallet_type == "lncli" else "outlined"
+                        theme_text_color: "Custom"
+                        on_release: root.on_wallet_type_selected("lncli")
+
+                        MDButtonText:
+                            text: "LND"
+                            text_color: app.theme_cls.onPrimaryColor if root.selected_wallet_type == "lncli" else app.theme_cls.onSurfaceColor
+
                 # Description of selected wallet type
                 MDLabel:
                     id: wallet_description
@@ -86,140 +97,189 @@
                     height: dp(30)
                     theme_text_color: "Secondary"
 
-        # Scrollable content area
-        MDScrollView:
-            #canvas:
-            #    Color:
-            #        rgba: 0,1,0,0.1
-            #    Rectangle:
-            #        pos: self.pos
-            #        size: self.size
-            size_hint: 0.6, 0.8
+        MDBoxLayout:
+            orientation: 'vertical'
+            size_hint: 0.6, 1
             pos_hint: {"center_x": 0.5}
-            do_scroll_x: False
-            do_scroll_y: True
-            bar_width: 4
 
-            # LNBits configuration section
-            MDBoxLayout:
-                #canvas:
-                #    Color:
-                #        rgba: 0,0,1,1
-                #    Rectangle:
-                #        pos: self.pos
-                #        size: self.size
-                id: lnbits_config_section
-                orientation: 'vertical'
-                size_hint_y: None
-                height: dp(420) if root.selected_wallet_type != "external" else 0
-                spacing: dp(15)
-                padding: [dp(15), dp(20), dp(15), dp(20)]
-                pos_hint: {'center_x': 0.5}
+            MDScrollView:
                 size_hint_x: 1
-                md_bg_color: app.theme_cls.primaryContainerColor if root.selected_wallet_type != "external" else app.theme_cls.backgroundColor
-                opacity: 1 if root.selected_wallet_type != "external" else 0
-                disabled: root.selected_wallet_type == "external"
+                size_hint_y: None
+                height: min(config_box.height, self.parent.height) if self.parent else config_box.height
+                do_scroll_x: False
+                do_scroll_y: True
+                bar_width: 4
+                scroll_y: 1
 
-                # Base URL
                 MDBoxLayout:
+                    id: config_box
+                    orientation: 'vertical'
                     size_hint_y: None
-                    height: 0 if root.selected_wallet_type != "lnbits" else dp(56)
-                    spacing: dp(15)
+                    height: 0 if root.selected_wallet_type == "external" else self.minimum_height
+                    spacing: 0
+                    padding: [dp(20), dp(20), dp(20), dp(24)] if root.selected_wallet_type != "external" else 0
                     size_hint_x: 1
+                    md_bg_color: app.theme_cls.surfaceContainerHighColor if root.selected_wallet_type != "external" else app.theme_cls.backgroundColor
+                    opacity: 1 if root.selected_wallet_type != "external" else 0
+                    disabled: root.selected_wallet_type == "external"
 
-                    MDTextField:
-                        id: base_url_field
-                        text: root.base_url
-                        helper_text: "URL of your LNBits server (e.g., https://lnbits.example.com)"
-                        helper_text_mode: "persistent"
-                        write_tab: False
-                        multiline: False
-                        on_text: root.on_base_url_text(self.text)
-                        size_hint_x: 0.7
-                        MDTextFieldHintText:
-                            text: "LNBits Server URL"
-                    
-                    # Use fallback button (only for LNBits)
-                    MDButton:
-                        pos_hint: {"right": 1, "center_y": 0.5}
-                        size_hint_x: 0.3
-                        on_release: root.show_fallback_dialog()
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height if root.selected_wallet_type == "lnbits" else 0
+                        spacing: dp(16)
+                        opacity: 1 if root.selected_wallet_type == "lnbits" else 0
+                        disabled: root.selected_wallet_type != "lnbits"
 
-                        MDButtonText:
-                            text: "Use Hosted LNBits"
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: dp(56)
+                            spacing: dp(15)
+                            size_hint_x: 1
 
-                # Create account button (only for LNBits)
-                MDBoxLayout:
-                    id: lnbits_defaults_section
-                    size_hint_y: None
-                    height: 0 if root.selected_wallet_type != "lnbits" else dp(40)
-                    #pos_hint: {'center_x': 0.5}
-                    size_hint_x: 0.6
-                    MDButton:
-                        id: lnbits_create_account_button
-                        height: 0 if root.selected_wallet_type != "lnbits" else dp(40)
-                        pos_hint: {"center_x": 0.5}
-                        on_press: root.lnbits_create_account()
-                        disabled: False
-                        MDButtonText:
-                            text: "Create Account"
+                            MDTextField:
+                                id: base_url_field
+                                text: root.base_url
+                                write_tab: False
+                                multiline: False
+                                theme_text_color: "Custom"
+                                text_color_normal: app.theme_cls.onSurfaceColor
+                                text_color_focus: app.theme_cls.onSurfaceColor
+                                on_text: root.on_base_url_text(self.text)
+                                size_hint_x: 0.7
+                                MDTextFieldHintText:
+                                    text: "LNBits Server URL"
 
-                # User ID
-                MDTextField:
-                    id: user_id_field
-                    text: root.user_id
-                    helper_text: "Your LNBits user ID"
-                    helper_text_mode: "persistent"
-                    write_tab: False
-                    multiline: False
-                    on_text: root.on_user_id_text(self.text)
-                    size_hint_x: 1
-                    MDTextFieldHintText:
-                        text: "User ID"
+                            MDButton:
+                                pos_hint: {"right": 1, "center_y": 0.5}
+                                size_hint_x: 0.3
+                                on_release: root.show_fallback_dialog()
+                                MDButtonText:
+                                    text: "Use Hosted LNBits"
 
-                # API Keys
-                MDBoxLayout:
-                    orientation: 'horizontal'
-                    spacing: dp(15)
-                    size_hint_y: None
-                    height: dp(56)
+                        MDBoxLayout:
+                            id: lnbits_defaults_section
+                            size_hint_y: None
+                            height: dp(40)
+                            size_hint_x: 0.6
+                            MDButton:
+                                id: lnbits_create_account_button
+                                pos_hint: {"center_x": 0.5}
+                                on_press: root.lnbits_create_account()
+                                disabled: root.lnbits_create_disabled
+                                MDButtonText:
+                                    text: "Create Account"
 
-                    MDTextField:
-                        id: read_api_key_field
-                        text: root.read_api_key
-                        size_hint_x: 0.5
-                        write_tab: False
-                        multiline: False
-                        on_text: root.on_read_api_key_text(self.text)
-                        MDTextFieldHintText:
-                            text: "Read API Key"
+                        MDTextField:
+                            id: user_id_field
+                            text: root.user_id
+                            write_tab: False
+                            multiline: False
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_user_id_text(self.text)
+                            size_hint_x: 1
+                            size_hint_y: None
+                            height: dp(56)
+                            MDTextFieldHintText:
+                                text: "User ID"
 
-                    MDTextField:
-                        id: admin_api_key_field
-                        text: root.admin_api_key
-                        size_hint_x: 0.5
-                        write_tab: False
-                        multiline: False
-                        on_text: root.on_admin_api_key_text(self.text)
-                        MDTextFieldHintText:
-                            text: "Admin API Key"
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            spacing: dp(15)
+                            size_hint_y: None
+                            height: dp(56)
 
-                # Wallet ID
-                MDTextField:
-                    id: wallet_id_field
-                    text: root.wallet_id
-                    helper_text: "ID of the specific wallet to use"
-                    helper_text_mode: "persistent"
-                    write_tab: False
-                    multiline: False
-                    on_text: root.on_wallet_id_text(self.text)
-                    size_hint_x: 1
-                    MDTextFieldHintText:
-                        text: "Wallet ID"
-                
-                MDWidget:
+                            MDTextField:
+                                id: read_api_key_field
+                                text: root.read_api_key
+                                size_hint_x: 0.5
+                                write_tab: False
+                                multiline: False
+                                theme_text_color: "Custom"
+                                text_color_normal: app.theme_cls.onSurfaceColor
+                                text_color_focus: app.theme_cls.onSurfaceColor
+                                on_text: root.on_read_api_key_text(self.text)
+                                MDTextFieldHintText:
+                                    text: "Read API Key"
 
-                
+                            MDTextField:
+                                id: admin_api_key_field
+                                text: root.admin_api_key
+                                size_hint_x: 0.5
+                                write_tab: False
+                                multiline: False
+                                theme_text_color: "Custom"
+                                text_color_normal: app.theme_cls.onSurfaceColor
+                                text_color_focus: app.theme_cls.onSurfaceColor
+                                on_text: root.on_admin_api_key_text(self.text)
+                                MDTextFieldHintText:
+                                    text: "Admin API Key"
+
+                        MDTextField:
+                            id: wallet_id_field
+                            text: root.wallet_id
+                            write_tab: False
+                            multiline: False
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_wallet_id_text(self.text)
+                            size_hint_x: 1
+                            size_hint_y: None
+                            height: dp(56)
+                            MDTextFieldHintText:
+                                text: "Wallet ID"
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height if root.selected_wallet_type == "lncli" else 0
+                        spacing: dp(16)
+                        opacity: 1 if root.selected_wallet_type == "lncli" else 0
+                        disabled: root.selected_wallet_type != "lncli"
+
+                        MDTextField:
+                            id: lncli_bin_field
+                            text: root.lncli_bin
+                            write_tab: False
+                            multiline: False
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_lncli_bin_text(self.text)
+                            size_hint_x: 1
+                            size_hint_y: None
+                            height: dp(56)
+                            MDTextFieldHintText:
+                                text: "lncli Binary Path"
+
+                        MDTextField:
+                            id: rpc_server_field
+                            text: root.rpc_server
+                            write_tab: False
+                            multiline: False
+                            theme_text_color: "Custom"
+                            text_color_normal: app.theme_cls.onSurfaceColor
+                            text_color_focus: app.theme_cls.onSurfaceColor
+                            on_text: root.on_rpc_server_text(self.text)
+                            size_hint_x: 1
+                            size_hint_y: None
+                            height: dp(56)
+                            MDTextFieldHintText:
+                                text: "LND RPC Server"
+
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: dp(40)
+                            MDButton:
+                                on_press: root.use_defaults()
+                                MDButtonText:
+                                    text: "Use Default Settings"
+
+            Widget:
+                size_hint_y: 1
 
         # Validation message
         MDBoxLayout:

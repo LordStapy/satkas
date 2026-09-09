@@ -1,9 +1,6 @@
-from kivy.lang import Builder
-from kivy.properties import StringProperty
 from kivy.clock import Clock
 from kivymd.uix.responsivelayout import MDResponsiveLayout
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.screenmanager import MDScreenManager
 from .desktop import DesktopLayout
 from .tablet import TabletLayout
 from .mobile import MobileLayout
@@ -32,7 +29,7 @@ class BaseResponsiveLayout(MDResponsiveLayout, MDScreen):
     def on_change_screen_type(self, *args):
         if not self._initialized:
             return
-        print(f"Layout switched: {args[0].upper()} ({self.size[0]}x{self.size[1]})")
+        # print(f"Layout switched: {args[0].upper()} ({self.size[0]}x{self.size[1]})")
         match args[0]:
             case 'mobile':
                 layout = self.mobile_view
@@ -41,7 +38,7 @@ class BaseResponsiveLayout(MDResponsiveLayout, MDScreen):
             case 'desktop':
                 layout = self.desktop_view
             case _:
-                print(args)
+                # print(args)
                 return
         layout.on_layout_activated()
 

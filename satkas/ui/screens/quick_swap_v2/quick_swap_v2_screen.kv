@@ -1,48 +1,121 @@
-#:import dp kivy.metrics.dp
 
 <QuickSwapV2Screen>:
     MDBoxLayout:
         orientation: "vertical"
+        spacing: 0
         size_hint_x: None
+        size_hint_y: 1
         width: root.width if root.width <= dp(1000) else dp(1000)
         pos_hint: {"center_x": 0.5}
-        
+
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: dp(16)
+            spacing: dp(12)
+            size_hint_y: None
+            height: self.minimum_height if root.resume_active else 0
+            opacity: 1 if root.resume_active else 0
+            disabled: not root.resume_active
+
+            MDCard:
+                orientation: "vertical"
+                style: "elevated"
+                padding: dp(20)
+                spacing: dp(12)
+                size_hint_y: None
+                height: self.minimum_height if root.resume_active else 0
+                md_bg_color: app.theme_cls.surfaceContainerHighColor
+
+                MDLabel:
+                    text: root.resume_headline
+                    font_style: "Title"
+                    role: "large"
+                    adaptive_height: True
+                MDLabel:
+                    text: root.resume_detail
+                    font_style: "Body"
+                    role: "large"
+                    adaptive_height: True
+                    opacity: 1 if root.resume_detail else 0
+                MDLabel:
+                    text: root.resume_status_text
+                    font_style: "Body"
+                    role: "medium"
+                    adaptive_height: True
+                    theme_text_color: "Custom"
+                    text_color: app.theme_cls.primaryColor
+                MDLabel:
+                    text: "This swap cannot be cancelled. It will complete or refund on its own."
+                    font_style: "Body"
+                    role: "small"
+                    adaptive_height: True
+                MDButton:
+                    style: "filled"
+                    size_hint_x: 1
+                    size_hint_y: None
+                    height: dp(48) if root.resume_active and root.resume_finished else 0
+                    opacity: 1 if root.resume_active and root.resume_finished else 0
+                    disabled: not (root.resume_active and root.resume_finished)
+                    ripple_effect: False
+                    on_release: root.dismiss_resume_panel()
+                    MDButtonText:
+                        text: "Back to swap"
+
         MDScrollView:
             do_scroll_x: False
-            do_scroll_y: True
-            
+            do_scroll_y: not root.resume_active
+            size_hint_y: 1
+            opacity: 0 if root.resume_active else 1
+            disabled: root.resume_active
+
             MDBoxLayout:
+                id: swap_form
                 orientation: "vertical"
-                spacing: dp(16)
                 padding: dp(16)
                 adaptive_height: True
-                
-                # Peer Selector (collapsible)
+
                 PeerSelectorCard:
                     id: peer_selector
-                
-                # Swap Editor with Start Button
+
+                MDWidget:
+                    size_hint_y: None
+                    height: 0 if root.ids.peer_selector.is_collapsed else dp(12)
+
                 MDBoxLayout:
                     orientation: "vertical"
-                    spacing: dp(12)
+                    spacing: 0
                     adaptive_height: True
-                    
+
                     SwapEditor:
                         id: swap_editor
-                    
+
+                    MDWidget:
+                        size_hint_y: None
+                        height: dp(12)
+
+                    PayoutAddressBar:
+                        id: payout_bar
+
+                    MDWidget:
+                        size_hint_y: None
+                        height: dp(12) if root.ids.swap_editor.is_editing else 0
+
                     MDBoxLayout:
                         orientation: "horizontal"
                         spacing: dp(12)
-                        adaptive_height: True
+                        size_hint_y: None
+                        height: dp(56) if root.ids.swap_editor.is_editing else 0
+                        opacity: 1 if root.ids.swap_editor.is_editing else 0
+                        disabled: not root.ids.swap_editor.is_editing or root.resume_active or root.start_in_flight
 
-                        # Start Swap Button (only visible when editing)
                         MDButton:
                             style: "filled"
                             size_hint: 1, None
                             height: dp(56) if root.ids.swap_editor.is_editing else 0
                             opacity: 1 * (0.5 if self.disabled else 1) if root.ids.swap_editor.is_editing else 0
                             md_bg_color_disabled: app.theme_cls.secondaryContainerColor
-                            disabled: not root.ids.swap_editor.is_valid or root.ids.peer_selector.is_checking or root.ids.swap_editor.is_fetching_rate
+                            disabled: not root.ids.swap_editor.is_valid or not root.ids.payout_bar.is_ready or root.ids.peer_selector.is_checking or root.ids.swap_editor.is_fetching_rate or root.resume_active or root.start_in_flight
+                            ripple_effect: False
                             on_release: root.start_swap()
                             MDButtonIcon:
                                 icon: "rocket-launch"
@@ -53,54 +126,85 @@
                                 role: "small"
                                 disabled_color: app.theme_cls.onSecondaryContainerColor
 
-                        # Read LN Invoice Button (only visible for kas2sat when editing)
                         MDButton:
                             style: "outlined"
-                            size_hint: 1, None
+                            size_hint_x: 1
+                            size_hint_y: None
                             height: dp(56) if root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat" else 0
                             opacity: 1 if root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat" else 0
-                            disabled: not (root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat")
+                            disabled: not (root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat") or root.resume_active or root.start_in_flight
                             on_release: root.ids.invoice_field.open_invoice_input_dialog(root.apply_invoice_to_preview)
                             MDButtonIcon:
                                 icon: "lightning-bolt"
                             MDButtonText:
                                 text: "Read LN Invoice"
-                        
-                        # spacer, pushes buttons to the left
+
                         MDWidget:
+                            size_hint_y: None
+                            height: 0
 
-                
-                # Invoice Field (hidden until swap starts)
-                InvoiceField:
-                    id: invoice_field
-                
-                # Contract Address Field (hidden until swap starts)
-                ContractAddressField:
-                    id: contract_field
-                
-                # Payment Field (hidden until ready to pay)
-                PaymentField:
-                    id: payment_field
-                
-                # Status Widget (hidden until swap starts)
-                StatusWidget:
-                    id: status_widget
-                
-                # Cancel/Back Button (visible based on state)
-                MDButton:
-                    id: cancel_back_button
-                    style: "text"
-                    size_hint: 1, None
-                    height: dp(40) if root.show_cancel_button else 0
-                    opacity: 1 if root.show_cancel_button else 0
-                    disabled: not root.show_cancel_button
-                    on_release: root.cancel_swap()
-                    MDButtonIcon:
-                        icon: "close-circle" if not root.swap_final_state else "arrow-left"
-                        theme_icon_color: "Custom"
-                        icon_color: (1, 0.3, 0.3, 1) if not root.swap_final_state else app.theme_cls.primaryColor
-                    MDButtonText:
-                        text: root.cancel_button_text
-                        theme_text_color: "Custom"
-                        text_color: (1, 0.3, 0.3, 1) if not root.swap_final_state else app.theme_cls.primaryColor
+                MDWidget:
+                    size_hint_y: None
+                    height: dp(12) if root.ids.swap_editor.is_collapsed else 0
 
+                MDBoxLayout:
+                    orientation: "vertical"
+                    spacing: 0
+                    size_hint_y: None
+                    height: 0 if not root.ids.swap_editor.is_collapsed else self.minimum_height
+                    opacity: 1 if root.ids.swap_editor.is_collapsed else 0
+
+                    InvoiceField:
+                        id: invoice_field
+
+                    MDWidget:
+                        size_hint_y: None
+                        height: dp(12) if root.ids.invoice_field.is_visible else 0
+
+                    ContractAddressField:
+                        id: contract_field
+                        title_text: "Kaspa Contract"
+
+                    MDWidget:
+                        size_hint_y: None
+                        height: dp(12) if root.ids.contract_field.is_visible else 0
+
+                    ContractAddressField:
+                        id: btc_contract_field
+                        title_text: "BTC Contract"
+
+                    MDWidget:
+                        size_hint_y: None
+                        height: dp(12) if root.ids.btc_contract_field.is_visible else 0
+
+                    PaymentField:
+                        id: payment_field
+
+                    MDWidget:
+                        size_hint_y: None
+                        height: dp(12) if root.ids.payment_field.is_visible else 0
+
+                    StatusWidget:
+                        id: status_widget
+
+                    MDWidget:
+                        size_hint_y: None
+                        height: dp(12) if root.ids.status_widget.is_visible else 0
+
+                    MDButton:
+                        id: cancel_back_button
+                        style: "text"
+                        size_hint: 1, None
+                        height: dp(40) if root.show_cancel_button else 0
+                        opacity: 1 if root.show_cancel_button else 0
+                        disabled: not root.show_cancel_button
+                        ripple_effect: False
+                        on_release: root.cancel_swap()
+                        MDButtonIcon:
+                            icon: "close-circle" if not root.swap_final_state else "arrow-left"
+                            theme_icon_color: "Custom"
+                            icon_color: (1, 0.3, 0.3, 1) if not root.swap_final_state else app.theme_cls.primaryColor
+                        MDButtonText:
+                            text: root.cancel_button_text
+                            theme_text_color: "Custom"
+                            text_color: (1, 0.3, 0.3, 1) if not root.swap_final_state else app.theme_cls.primaryColor

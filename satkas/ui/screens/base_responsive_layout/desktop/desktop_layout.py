@@ -1,14 +1,9 @@
 import os
-import asyncio
 from kivy.lang import Builder
-from kivy.uix.bubble import BoxLayout
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.navigationdrawer import MDNavigationDrawer
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivy.clock import Clock
 from kivy.app import App
 from kivy.metrics import dp
-from kivy.core.window import Window
 
 
 Builder.load_file(os.path.join(os.path.dirname(__file__), 'desktop_layout.kv'))

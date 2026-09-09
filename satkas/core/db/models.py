@@ -5,7 +5,7 @@ import logging
 import sys
 import json
 
-from peewee import DateTimeField, Model, CharField, BooleanField, IntegerField
+from peewee import DateTimeField, Model, CharField, BooleanField, IntegerField, TextField
 from playhouse.migrate import SqliteDatabase
 
 
@@ -36,17 +36,50 @@ class BaseModel(Model):
 
 class Swap(BaseModel):
     swap_type = CharField(default='')
-    side = CharField(default='')  # maker / taker
+    # Indexed because a swap's key index is its row's position among its own
+    # side's rows, so every derivation counts rows filtered by this.
+    side = CharField(default='', index=True)  # maker / taker
     remote_pubkey = CharField(default='')
     ln_invoice = CharField(default=None, unique=True, null=True)
     payment_hash = CharField(default='')
+    secret_hash = CharField(default='')
     sender_address = CharField(default='')
     receiver_address = CharField(default='')
+    btc_sender_address = CharField(default='', null=True)
+    btc_receiver_address = CharField(default='', null=True)
     contract = CharField(default='')
+    btc_contract = CharField(default='', null=True)
     p2sh_address = CharField(default='')
+    btc_p2sh_address = CharField(default='', null=True)
     dwork_amount = IntegerField(default=0)
-    status = CharField(default='INIT')  # INIT / PENDING / COMPLETED / REFUNDED / EXPIRED
+    sat_amount = IntegerField(default=0)
+    kas_locktime = IntegerField(null=True)  # daa score (on-chain) or ms timestamp (LN)
+    btc_locktime = IntegerField(null=True)  # bitcoin block height
+    dag_checkpoint_hash = CharField(null=True)  # virtual-chain start hash at OPENED
+    # INIT → OPENED → FUNDED → COMPLETING|REFUNDING → COMPLETED|REFUNDED
+    #                              ↘ EXPIRED | FAILED
+    # OPENED = contracts ready, our pay not yet submitted.
+    # FUNDED = our on-chain fund or LN pay submitted (capital at risk).
+    status = CharField(default='INIT')
     txid = CharField(default=None, null=True)
+    btc_txid = CharField(default=None, null=True)
+    secret = CharField(default=None, null=True)
+    output_address = CharField(null=True)  # kas redeem/refund destination
+    btc_output_address = CharField(null=True)
+    extra_info = TextField(null=True)  # JSON object for non-core / plugin data
+
+    def get_extra(self):
+        if not self.extra_info:
+            return {}
+        try:
+            return json.loads(self.extra_info)
+        except (TypeError, ValueError):
+            return {}
+
+    def set_extra(self, key, value):
+        extra = self.get_extra()
+        extra[key] = value
+        self.extra_info = json.dumps(extra)
 
 
 class WalletModel(BaseModel):
@@ -54,6 +87,7 @@ class WalletModel(BaseModel):
     is_encrypted = BooleanField(default=False)
     address_counter = IntegerField(default=0)
     next_address = CharField()
+    # next_btc_address = CharField(default=None, null=True)
 
 
 class MakerWallet(WalletModel):

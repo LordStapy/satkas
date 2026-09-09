@@ -1,0 +1,8 @@
+# Build backend only. Project metadata still lives in setup.py / satkas/__init__.py.
+# Do not add a [project] table here: it would duplicate (and conflict with) setup().
+# Do not add [tool.setuptools] either: current setuptools then validates an empty
+# [project] and fails with "project must contain ['version']".
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

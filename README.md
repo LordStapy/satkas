@@ -1,112 +1,61 @@
-## 🔄 BTC-KAS Atomic Swap Platform
-### *Bridging Bitcoin and Kaspa Without Boundaries*
+## 🔄 SatKas - a BTC-KAS Atomic Swap Platform
 
-[![Status](https://img.shields.io/badge/Status-Proof%20of%20Concept-yellow)](https://github.com/LordStapy/satkas)
-[![Network](https://img.shields.io/badge/Network-Live%20on%20Mainnet-green)](#)
-[![License](https://img.shields.io/badge/License-Open%20Source-blue)](#)
+### *Bridging Bitcoin and Kaspa Without Boundaries*
 
 ---
 
-### What are Atomic Swaps?
-
-Atomic swaps are "digital agreement" that ensures both parties get what they agreed to, or no one gets anything.
-
-The process is **fully trustless**: through the complete process, users don't need to trust anyone.
-
 ### Getting Started:
+
 **Requirements:** 
+
 - `tor` is required 
-- a personal `kaspad` node is highly recommended.
-- any LN wallet for receiving sats. For sending payments, make sure the wallet displays the payment preimage. (Makers currently need LND/lncli)
-- any Kaspa wallet. (Makers currently need Golang kaspawallet)
+- any LN wallet for receiving sats. **For sending payments, make sure the wallet displays the payment preimage**.
+- any Kaspa / Bitcoin wallet can be used. One-click payments are available for go-kaspawallet and bitcoind users.
 
-Directly install from GitHub:
 
-    # It's recommended to use a virtual environment
-    python3 -m venv venv
-    source venv/bin/activate
-    # Install with pip
-    # PyPi release is not currently available, the UI PoC was build with a dev version of kivyMD
-    pip3 install git+https://github.com/LordStapy/satkas
 
-Or, download and install from source:
+**Install:**
 
-    git clone https://github.com/LordStapy/satkas.git
-    cd satkas
-    # start a virtual environment
-    python3 -m venv venv
-    source venv/bin/activate
-    pip3 install .
+Note: kivymd has a dependency on the [cairo graphics library](https://cairographics.org/), SatKas doesn't use widgets requiring cairo rendering and we can bypass it with the following commands:
+
+```
+# It's recommended to use a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+# Install kivymd without dependencies
+pip3 install kivymd==2.0.0 --no-deps
+pip3 install satkas
+# The error complaining about the missing materialshapes is expected, it's the cairo one we bypassed
+```
+
+If you have cairo installed, you can directly run:
+
+```
+pip3 install 'satkas[kivymd]'
+```
+
+
 
 #### Start the UI app:
 
-    satkas
+```
+satkas
+```
 
 **SatKas is experimental software, test it with small amounts of KAS and sats!**
 
-Alternatively, the `examples` directory contains few scripts showing how to use the libraries, including running a Maker or a Taker from the command line.
-You will need to copy the `example.env` file to `.env` and adjust the parameters to your needs.
+Missing / limitations:
 
-Note: running a Maker requires extra dependencies and some coding skills, I don't recommend it at this stage. 
-
-### How It Works
-Here is a simplified schema of how the exchange happens:
-
-```mermaid
-sequenceDiagram
-    participant U as 🧑 User (Taker)
-    participant M as 🏪 Market Maker (Maker)
-    
-    Note over U: User has BTC (Lightning Network)
-    Note over M: Market Maker has KAS
-
-    Note over U,M: Discovery & Negotiation
-    U->>M: Request BTC → KAS exchange offer
-    M->>U: Reply with exchange rate offer
-    U->>M: Accept offer + provide KAS receiving address
-
-    Note over M: Lightning Invoice
-    M->>M: Create Lightning Network invoice
-    M->>U: 5. Send Lightning Network invoice
-
-    Note over M: Kaspa Contract Lock
-    M->>M: Create contract locking KAS with secret code
-
-    Note over U: Payment & Receipt
-    U->>U: Pay Lightning invoice and reveal secret
-
-    Note over M: Market Maker receives BTC (Lightning Network)
-
-    Note over U: Unlock KAS & Complete swap
-    U->>U: Use revealed secret to unlock KAS from contract and send it to it's own wallet
-        
-    Note over U: User receives KAS
-
-    Note over U,M: ✅ Exchange Complete!
-
-```
+- Example scripts were not updated, they are most likely broken.
+- P2P layer is not exposed to UI yet, makers are hardcoded.
+- UI is Taker only, Maker interface TBD.
+- DB is NOT encrypted, all configs (including passwords) are stored in plaintext.
 
 Swaps work in **both directions**, users can exchange:
-  - Bitcoin (LN) ---> KAS 
-  - KAS ---> Bitcoin (LN)
 
-### Contribute:
-
-#### **Provide Feedback**
-- What features do you need most?
-- What concerns do you have?
-- How would you use this platform?
-
-#### **Test the Platform**
-- Try the current proof of concept
-- Report bugs and issues
-- Share your experience
-
-#### **Vote on Features**
-- Help prioritize development
-- Suggest new capabilities
-- Shape the roadmap
+- Bitcoin (on-chain or LN) ---> KAS 
+- KAS ---> Bitcoin (on-chain or LN)
 
 ---
 
-Questions? Feedback? Criticisms? Suggestions? Tag me (@lordstapy) in Kaspa Official Discord server (votes-and-funding-discussions channel - https://discord.com/channels/599153230659846165/1032411383347826748)
+For feedback and suggestions: tag me in Kaspa Official Discord server or drop a message on Telegram (@LordStapy)
