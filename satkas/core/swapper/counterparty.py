@@ -89,6 +89,7 @@ class Counterparty:
             self.init_wallet()
 
         self.passphrase = None
+        # Future: cache/memoize the HD wallet object for reuse, gated on keep_unlocked.
         wallet = self.get_wallet(keep_unlocked)
         self.node_privkey = wallet.derive_secret_key(f"{DERIVATION_PATH}0")
         self.node_pubkey = wallet.derive_public_key(f"{DERIVATION_PATH}0")[1:]
@@ -275,13 +276,10 @@ class Counterparty:
                     f"row={row.btc_p2sh_address} gen={swap.btc_contract_address}"
                 )
                 return None
-        # FUNDED is the only status where these columns are still the funding
-        # outpoint; COMPLETING/REFUNDING overwrite them with the spend.
-        if row.status == 'FUNDED':
-            if row.txid:
-                swap.kas_funding_txid = row.txid
-            if row.btc_txid:
-                swap.btc_funding_txid = row.btc_txid
+        if row.txid:
+            swap.kas_funding_txid = row.txid
+        if row.btc_txid:
+            swap.btc_funding_txid = row.btc_txid
         return swap
 
     def assert_key_space(self):
@@ -403,11 +401,14 @@ class Counterparty:
         if plugin in self._plugins:
             self._plugins.remove(plugin)
 
-    def set_swap_status(self, db_swap, status, txid=None, btc_txid=None):
+    def set_swap_status(self, db_swap, status, txid=None, btc_txid=None,
+                        spend_txid=None, btc_spend_txid=None):
         if db_swap is None:
             return False
         changed = (
-            db_swap.status != status or txid is not None or btc_txid is not None
+            db_swap.status != status
+            or txid is not None or btc_txid is not None
+            or spend_txid is not None or btc_spend_txid is not None
         )
         db_swap.status = status
         db_swap.updated_at = datetime.datetime.now()
@@ -415,6 +416,10 @@ class Counterparty:
             db_swap.txid = txid
         if btc_txid is not None:
             db_swap.btc_txid = btc_txid
+        if spend_txid is not None:
+            db_swap.spend_txid = spend_txid
+        if btc_spend_txid is not None:
+            db_swap.btc_spend_txid = btc_spend_txid
         db_swap.save()
         if changed:
             for plugin in self._plugins:
@@ -423,7 +428,11 @@ class Counterparty:
                     continue
                 try:
                     asyncio.create_task(
-                        handler(self, db_swap, status, txid=txid, btc_txid=btc_txid)
+                        handler(
+                            self, db_swap, status,
+                            txid=txid, btc_txid=btc_txid,
+                            spend_txid=spend_txid, btc_spend_txid=btc_spend_txid,
+                        )
                     )
                 except RuntimeError:
                     break
@@ -565,18 +574,18 @@ class Counterparty:
         side = row.side
         if row.status == 'COMPLETING':
             if st == 'btc2kas' and side == 'maker':
-                return 'btc', row.btc_txid
+                return 'btc', row.btc_spend_txid
             if st == 'kas2btc' and side == 'taker':
-                return 'btc', row.btc_txid
+                return 'btc', row.btc_spend_txid
             if st == 'kas2btc' and side == 'maker':
-                return 'kas', row.txid
-            return 'kas', row.txid
+                return 'kas', row.spend_txid
+            return 'kas', row.spend_txid
         if row.status == 'REFUNDING':
             if st == 'kas2btc' and side == 'maker':
-                return 'btc', row.btc_txid
+                return 'btc', row.btc_spend_txid
             if st == 'btc2kas' and side == 'taker':
-                return 'btc', row.btc_txid
-            return 'kas', row.txid
+                return 'btc', row.btc_spend_txid
+            return 'kas', row.spend_txid
         return None, None
 
     def resume_pending_settlements(self, on_event=None):
@@ -1584,6 +1593,7 @@ class Counterparty:
 
     @staticmethod
     def get_msg_hash(msg_type, payload=None):
+        # ToDo: no replay protection (nonce/timestamp/recipient). Not critical at this time.
         if payload is not None:
             payload_string = json.dumps(payload, separators=(',', ':'))
             message_to_hash = f"{msg_type}:{payload_string}"

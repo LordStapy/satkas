@@ -37,6 +37,7 @@ class Maker(Counterparty):
                  wallet_index=1,
                  wallet_passwd=None,
                  lport=38080,
+                 lhost='127.0.0.1',
                  apiport=None,
                  swap_endpoint=None,
                  service_manager=None,
@@ -52,6 +53,7 @@ class Maker(Counterparty):
         self.runner = None
         self.site = None
         self.lport = lport
+        self.lhost = lhost
         self.apiserver = None
         self.apirunner = None
         self.apisite = None
@@ -120,14 +122,17 @@ class Maker(Counterparty):
                 self.remove_hidden_service()
 
     def _maker_settle(self, swap_type, swap, db_swap, pending_status, final_status,
-                      chain, txid=None, btc_txid=None, addresses=None):
+                      chain, spend_txid=None, btc_spend_txid=None, addresses=None):
         """COMPLETING/REFUNDING + background promote; drop in-memory swap.
 
         addresses: optional kas payout address(es) for UTXO/DAA confirm.
         Unused for btc (txid-only via bitcoin_service).
         """
-        watch = txid if chain == 'kas' else btc_txid
-        self.set_swap_status(db_swap, pending_status, txid=txid, btc_txid=btc_txid)
+        watch = spend_txid if chain == 'kas' else btc_spend_txid
+        self.set_swap_status(
+            db_swap, pending_status,
+            spend_txid=spend_txid, btc_spend_txid=btc_spend_txid,
+        )
         self.start_settlement(
             db_swap.id, chain, watch, final_status, addresses=addresses,
         )
@@ -217,14 +222,14 @@ class Maker(Counterparty):
             if chain == 'btc':
                 swap.btc_transaction = txid
                 self._maker_settle(
-                    swap_type, swap, db_swap, pending, final, 'btc', btc_txid=txid,
+                    swap_type, swap, db_swap, pending, final, 'btc', btc_spend_txid=txid,
                 )
             else:
                 dest = swap.output_address or (
                     swap.sender_address if refund else swap.receiver_address
                 )
                 self._maker_settle(
-                    swap_type, swap, db_swap, pending, final, 'kas', txid=txid,
+                    swap_type, swap, db_swap, pending, final, 'kas', spend_txid=txid,
                     addresses=[dest] if dest else None,
                 )
             return True
@@ -269,7 +274,8 @@ class Maker(Counterparty):
         self.server = web.Server(self.post_handler)
         self.runner = web.ServerRunner(self.server)
         await self.runner.setup()
-        self.site = web.TCPSite(self.runner, '0.0.0.0', self.lport)
+        # Default loopback: Tor maps here locally. Clearnet needs a reverse proxy (or lhost=0.0.0.0).
+        self.site = web.TCPSite(self.runner, self.lhost, self.lport)
         await self.site.start()
 
         if self.apiport is not None:
@@ -313,6 +319,7 @@ class Maker(Counterparty):
         self.tor_controller.remove_ephemeral_hidden_service(self.hidden_service[:-6])
 
     async def api_handler(self, request):
+        # This endpoint is meant for user access, no third parties, no cap.
         content = await request.content.read()
         path = request.path
         logger.debug(f"{path}: {content}")
@@ -326,7 +333,17 @@ class Maker(Counterparty):
         return web.json_response({'error': 'Something went wrong'})
 
     async def post_handler(self, request):
-        content = await request.content.read()
+        # Unhandled exceptions here become aiohttp 500s; they do not crash the loop.
+        max_post_body = 32 * 1024
+        try:
+            content = await asyncio.wait_for(
+                request.content.read(max_post_body + 1),
+                timeout=30,
+            )
+        except asyncio.TimeoutError:
+            return web.Response(status=408, text='Request timeout')
+        if len(content) > max_post_body:
+            return web.Response(status=413, text='Too large')
         try:
             data = json.loads(content)
             logger.info(f"Received data: {data}")
@@ -700,7 +717,7 @@ class Maker(Counterparty):
 
         built = await self._build_init_swap(msg_payload, remote_node_pubkey, address, btc_address)
         if built is None:
-            return False
+            return self._reject_init_swap(db_swap, remote_node_pubkey, msg_payload)
         swap_type, swap_kwargs, response_payload, kas_amount = built
         bucket = self.locked_offers.get(remote_node_pubkey)
         if bucket is not None:
@@ -718,11 +735,15 @@ class Maker(Counterparty):
                 )
             except InvoiceInvalid as e:
                 logger.error(e)
-                return False
+                return self._reject_init_swap(
+                    db_swap, remote_node_pubkey, msg_payload, 'invoice_invalid',
+                )
             logger.debug(decode_out)
             if swap.timelock / 1000 < time.time():
                 # invoice is already expired, abort swap
-                return False
+                return self._reject_init_swap(
+                    db_swap, remote_node_pubkey, msg_payload, 'invoice_expired',
+                )
         logger.info('Calculating P2SH address')
         swap.gen_contract_address()
         logger.info('P2SH calculated')
@@ -768,6 +789,14 @@ class Maker(Counterparty):
             swap.kas_amount = kas_amount
 
         return response_payload
+
+    def _reject_init_swap(self, db_swap, remote_node_pubkey, msg_payload,
+                         failure_type='rejected'):
+        db_swap.remote_pubkey = remote_node_pubkey
+        db_swap.set_extra('failure_type', failure_type)
+        db_swap.set_extra('msg_payload', msg_payload)
+        self.set_swap_status(db_swap, 'FAILED')
+        return False
 
     def _validate_offer(self, remote_pubkey, swap_type, swap_price, implied_kas):
         """Match price and implied KAS (named size, not kas_lock) to a locked or book offer."""

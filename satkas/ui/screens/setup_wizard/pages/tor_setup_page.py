@@ -31,6 +31,13 @@ class TorSetupPage(MDScreen):
 
     def on_enter(self):
         """Called when the page is entered."""
+
+        # ToDo: try auto-detect tor service, leave configs hidden unless auto-detect fails
+        # or user clicks a dedicated button to show advanced settings before continuing.
+        # This may be also a good place for enabling clearnet support in the future,
+        # either as a fallback for no-tor-detected, or as an addition to tor-only mode 
+        # (for experts and reckless users)
+    
         # Get the Tor service from the app's service manager
         from kivy.app import App
         app = App.get_running_app()

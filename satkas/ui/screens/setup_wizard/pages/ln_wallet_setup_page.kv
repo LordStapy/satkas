@@ -133,7 +133,7 @@
 
                         MDBoxLayout:
                             size_hint_y: None
-                            height: dp(56)
+                            height: dp(56) if root.selected_wallet_type == "lnbits" else 0
                             spacing: dp(15)
                             size_hint_x: 1
 
@@ -160,7 +160,7 @@
                         MDBoxLayout:
                             id: lnbits_defaults_section
                             size_hint_y: None
-                            height: dp(40)
+                            height: dp(40) if root.selected_wallet_type == "lnbits" else 0
                             size_hint_x: 0.6
                             MDButton:
                                 id: lnbits_create_account_button
@@ -181,7 +181,7 @@
                             on_text: root.on_user_id_text(self.text)
                             size_hint_x: 1
                             size_hint_y: None
-                            height: dp(56)
+                            height: dp(56) if root.selected_wallet_type == "lnbits" else 0
                             MDTextFieldHintText:
                                 text: "User ID"
 
@@ -189,7 +189,7 @@
                             orientation: 'horizontal'
                             spacing: dp(15)
                             size_hint_y: None
-                            height: dp(56)
+                            height: dp(56) if root.selected_wallet_type == "lnbits" else 0
 
                             MDTextField:
                                 id: read_api_key_field
@@ -228,7 +228,7 @@
                             on_text: root.on_wallet_id_text(self.text)
                             size_hint_x: 1
                             size_hint_y: None
-                            height: dp(56)
+                            height: dp(56) if root.selected_wallet_type == "lnbits" else 0
                             MDTextFieldHintText:
                                 text: "Wallet ID"
 
@@ -251,7 +251,7 @@
                             on_text: root.on_lncli_bin_text(self.text)
                             size_hint_x: 1
                             size_hint_y: None
-                            height: dp(56)
+                            height: dp(56) if root.selected_wallet_type == "lncli" else 0
                             MDTextFieldHintText:
                                 text: "lncli Binary Path"
 
@@ -266,13 +266,13 @@
                             on_text: root.on_rpc_server_text(self.text)
                             size_hint_x: 1
                             size_hint_y: None
-                            height: dp(56)
+                            height: dp(56) if root.selected_wallet_type == "lncli" else 0
                             MDTextFieldHintText:
                                 text: "LND RPC Server"
 
                         MDBoxLayout:
                             size_hint_y: None
-                            height: dp(40)
+                            height: dp(40) if root.selected_wallet_type == "lncli" else 0
                             MDButton:
                                 on_press: root.use_defaults()
                                 MDButtonText:

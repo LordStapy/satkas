@@ -55,17 +55,18 @@
         height: dp(48)
         width: min(dp(8*64) + dp(56), root.width - dp(24))  # ToDo: find a way to make this dynamic (in case of font size increase/decrease)
         
-        # Copyable address label
+        # Double-tap copies .text. Keep that the full address (or "");
+        # shorten is draw-only and must not be replaced by a sliced string.
         MDLabel:
             id: contract_address_label
-            #md_bg_color: 1, 0, 0, 0.5
             text: root.contract_address_display
             font_style: "Body"
             role: "medium"
             adaptive_height: True
             shorten: True
             shorten_from: "center"
-
+            allow_copy: True if root.contract_address else False
+            on_copy: root.on_address_copied()
             pos_hint: {"center_y": 0.5}
             theme_text_color: "Secondary"
         

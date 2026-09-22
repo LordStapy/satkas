@@ -4,9 +4,31 @@ import os
 import logging
 import sys
 import json
+from pathlib import Path
 
 from peewee import DateTimeField, Model, CharField, BooleanField, IntegerField, TextField
 from playhouse.migrate import SqliteDatabase
+
+
+def get_data_dir(app_name: str = "satkas") -> Path:
+    """
+    Return the user data directory.
+    """
+    # TODO: Android support before other branches
+    if os.name == "posix":
+        path = Path.home() / f".{app_name}"
+    elif "LOCALAPPDATA" in os.environ:
+        path = Path(os.environ["LOCALAPPDATA"]) / app_name
+    else:
+        path = Path.home() / f".{app_name}"
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+        if os.name == "posix":
+            try:
+                path.chmod(0o700)
+            except OSError:
+                pass
+    return path
 
 
 def resource_path(relative_path):
@@ -22,7 +44,7 @@ def resource_path(relative_path):
 logging.getLogger('peewee').setLevel(logging.WARNING)
 db_path = os.getenv('SATKAS_DB_PATH', None)
 if db_path is None:
-    db_path = resource_path('satkas.db')
+    db_path = get_data_dir() / 'satkas.db'
 db = SqliteDatabase(db_path, timeout=10)
 
 
@@ -61,8 +83,10 @@ class Swap(BaseModel):
     # OPENED = contracts ready, our pay not yet submitted.
     # FUNDED = our on-chain fund or LN pay submitted (capital at risk).
     status = CharField(default='INIT')
-    txid = CharField(default=None, null=True)
-    btc_txid = CharField(default=None, null=True)
+    txid = CharField(default=None, null=True)  # kas funding
+    btc_txid = CharField(default=None, null=True)  # btc funding
+    spend_txid = CharField(default=None, null=True)  # kas redeem/refund
+    btc_spend_txid = CharField(default=None, null=True)  # btc redeem/refund
     secret = CharField(default=None, null=True)
     output_address = CharField(null=True)  # kas redeem/refund destination
     btc_output_address = CharField(null=True)
@@ -183,3 +207,10 @@ def initialize_db():
 
 
 initialize_db()
+
+# Schema 0.1.0 has no spend_txid / btc_spend_txid. create_tables(safe=True) will
+# not add them to an existing table.
+#
+#   ALTER TABLE swap ADD COLUMN spend_txid VARCHAR(255);
+#   ALTER TABLE swap ADD COLUMN btc_spend_txid VARCHAR(255);
+

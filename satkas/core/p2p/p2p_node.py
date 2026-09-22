@@ -8,6 +8,8 @@ import itertools
 
 from python_socks.async_.asyncio import Proxy
 
+from satkas.core.services.tor_service import TorService
+
 logger = logging.getLogger('p2p_node')
 logger.setLevel(logging.DEBUG)
 
@@ -145,7 +147,12 @@ class Node:
     async def connect_to_peer(self, host, port):
         if f"{host}:{port}" == self.endpoint:
             return False
-        proxy = Proxy.from_url('socks5://127.0.0.1:9050', rdns=True)
+        sm = getattr(self.swapnode, 'sm', None)
+        ts = sm.tor_service if sm else None
+        proxy = Proxy.from_url(
+            TorService.socks_url(getattr(ts, 'host', None), getattr(ts, 'port', None)),
+            rdns=True,
+        )
         logger.debug(f"Connecting to {host}, {port}")
         try:
             sock = await proxy.connect(dest_host=host, dest_port=port)

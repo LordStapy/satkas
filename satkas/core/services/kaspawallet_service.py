@@ -298,6 +298,14 @@ class KaspawalletService(BaseService):
         )
         out = out.decode().strip()
         err = err.decode().strip()
+        if 'Rejected transaction' in err and 'already spent by transaction' in err:
+            logger.info('utxo spent: retrying in 3 seconds')
+            await asyncio.sleep(3)
+            return await self.pay(destination, amount, sm=sm)
+        if 'Insufficient funds for send' in err:
+            logger.info('Not enough funds: retrying in 5 seconds')
+            await asyncio.sleep(5)
+            return await self.pay(destination, amount, sm=sm)
         if err:
             logger.error(f"kaspawallet send: {err}")
         txids = self.TXID_RE.findall(out)

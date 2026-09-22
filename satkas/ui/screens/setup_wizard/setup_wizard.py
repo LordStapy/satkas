@@ -69,8 +69,8 @@ class SetupWizard(MDScreen):
         self.pages['password_setup'].on_next = self.complete_setup
         self.pages['password_setup'].on_back = partial(self.go_to_btc_wallet_setup, direction='right')
 
-    def on_enter(self):
-        """Called when the wizard screen is entered."""
+    def on_pre_enter(self):
+        """Called when the wizard screen is about to be entered."""
         from kivy.app import App
         self.app = App.get_running_app()
         self.service_manager = self.app.service_manager
@@ -82,8 +82,10 @@ class SetupWizard(MDScreen):
                 self.screen_manager.add_widget(page)
 
         # Start with landing page
+        self.screen_manager.transition.duration = 0
         self.current_step = 'landing'
         self.screen_manager.current = 'landing'
+        self.screen_manager.transition.duration = 0.4
 
     def go_to_landing(self, direction='right'):
         """Navigate to landing page."""

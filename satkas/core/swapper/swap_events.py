@@ -55,7 +55,7 @@ class SwapEvent:
     contract_address: Optional[str] = None
     btc_contract_address: Optional[str] = None
     invoice: Optional[str] = None
-    txid: Optional[str] = None
+    txid: Optional[str] = None  # settlement (redeem/refund) broadcast id
     error: Optional[str] = None
 
     def as_dict(self):

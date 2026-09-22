@@ -114,12 +114,6 @@ class SwapEditor(MDCard):
         else:
             self.swap_direction = "kas2sat" if self.sends_kas else "sat2kas"
 
-        # On-chain has no LN invoice
-        if self.screen and mode == "onchain":
-            invoice_field = self.screen.ids.invoice_field
-            if invoice_field.invoice:
-                invoice_field.invoice = ""
-
         self.last_quote = None
         self.quote_failed = False
         self.calculate_amounts()
@@ -127,8 +121,10 @@ class SwapEditor(MDCard):
         self.get_receive_amount_display()
         self.validate()
         if self.screen:
+            if mode == "onchain" or self.swap_direction != "kas2sat":
+                self.screen.ids.invoice_field.clear_stored()
+                self.screen.close_invoice_dialog()
             peer_selector = self.screen.ids.peer_selector
-            # Show cached rate for the new mode immediately (LN vs on-chain pair)
             peer_selector.update_status(peer_selector.peer_status, editor=self)
             self.screen.restart_rate_refresh()
     
@@ -142,11 +138,9 @@ class SwapEditor(MDCard):
         # Preserve anchor_field (Option B - anchor stays fixed across direction switch)
         # This allows amounts (including those from invoices) to remain anchored
         
-        # Clear invoice if switching away from kas2sat (invoice was for receiving BTC)
         if self.screen and self.swap_direction != "kas2sat":
-            invoice_field = self.screen.ids.invoice_field
-            if invoice_field.invoice:
-                invoice_field.invoice = ""  # Clear stored invoice
+            self.screen.ids.invoice_field.clear_stored()
+            self.screen.close_invoice_dialog()
         
         self.last_quote = None
         self.quote_failed = False
@@ -207,6 +201,9 @@ class SwapEditor(MDCard):
             return
 
         self.last_quote = None
+        if self.screen:
+            self.screen.ids.invoice_field.clear_stored()
+            self.screen._push_dialog_expected()
         self.validate()
         
         # Trigger debounced rate refresh for volume-based pricing (only when user is typing)
@@ -310,12 +307,42 @@ class SwapEditor(MDCard):
         self.get_send_amount_display()
         self.get_receive_amount_display()
         self.validate()
+        if self.screen:
+            self.screen._push_dialog_expected()
+
+    def _invoice_matches_quote(self):
+        if self.swap_direction != "kas2sat" or not self.screen:
+            return True
+        field = self.screen.ids.invoice_field
+        quoted = int((self.last_quote or {}).get('sat_amount') or 0)
+        return bool(
+            field.invoice
+            and field.is_invoice_validated
+            and quoted > 0
+            and abs(int(field.invoice_sats or 0) - quoted) <= 1
+        )
+
+    def _sync_invoice_pulse(self):
+        if not self.screen or 'invoice_read_button' not in self.screen.ids:
+            return
+        btn = self.screen.ids.invoice_read_button
+        needed = (
+            self.swap_direction == "kas2sat"
+            and self.is_editing
+            and not self._invoice_matches_quote()
+        )
+        if needed:
+            if getattr(btn, '_attention_anim', None) is None:
+                btn.start_attention_pulse()
+        else:
+            btn.stop_attention_pulse()
+            btn.theme_line_color = "Primary"
 
     def validate(self):
         """Check if amounts are valid for starting swap."""
         has_amounts = self.kas_amount > 0 and self.btc_amount > 0
         q = self.last_quote
-        quote_ok = (
+        quote_live = (
             q
             and q.get('swap_type') == self.swap_direction
             and (q.get('valid_until') or 0) > time.time()
@@ -323,7 +350,12 @@ class SwapEditor(MDCard):
             and q.get('sat_amount', 0) > 0
             and not self.is_fetching_rate
         )
-        self.is_valid = bool(has_amounts and quote_ok)
+        invoice_ok = self._invoice_matches_quote()
+        if self.swap_direction == "kas2sat":
+            self.is_valid = bool(has_amounts and quote_live and invoice_ok)
+        else:
+            self.is_valid = bool(has_amounts and quote_live)
+        self._sync_invoice_pulse()
     
     def format_kas(self, amount):
         """Format KAS amount with stripped trailing zeros.
@@ -399,6 +431,7 @@ class SwapEditor(MDCard):
         self.get_send_amount_display()
         self.get_receive_amount_display()
         self.get_summary_display()
+        self._sync_invoice_pulse()
         anim = Animation(height=dp(48), duration=0.5)
         anim.start(self)
     
@@ -408,6 +441,7 @@ class SwapEditor(MDCard):
         # Mode selector row adds height when editing
         anim = Animation(height=dp(264), duration=0.5)
         anim.start(self)
+        self._sync_invoice_pulse()
     
     def on_kas2sat_rate(self, instance, value):
         """Recalculate when off-chain send-KAS rate changes."""
@@ -467,5 +501,6 @@ class SwapEditor(MDCard):
         self.ids.editor_collapsed_icon.icon = "check-circle"
         self.ids.editor_collapsed_icon.text_color = (0, 0.8, 0, 1)
         self.height = dp(264)
+        self._sync_invoice_pulse()
 
 

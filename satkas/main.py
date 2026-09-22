@@ -27,6 +27,10 @@ from kivymd.theming import OptionProperty, ThemeManager
 from kivy.animation import Animation
 from kivy.clock import Clock
 from kivymd.app import MDApp
+from satkas.ui.utils.kivymd_ripple_fbo_fix import apply_kivymd_ripple_fbo_fix
+
+# ToDo: remove this once kivymd stable release includes the FBO size fix
+apply_kivymd_ripple_fbo_fix()
 
 from kivy.app import App
 

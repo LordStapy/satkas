@@ -54,20 +54,23 @@ class KivyInteraction(SwapInteraction):
         existing = getattr(self.screen.ids.invoice_field, 'invoice', '') or ''
         if existing:
             return existing
-        future = asyncio.get_running_loop().create_future()
-        self._pending['invoice'] = future
-        try:
-            while not future.done():
-                # Quote expiry while waiting for an invoice: abandon and let
-                # the orchestrator surface InteractionRequired / cancel.
-                valid_until = getattr(self.screen, '_kas2sat_valid_until', 0)
-                if valid_until and valid_until < time.time():
-                    self.abandon()
-                    raise InteractionRequired('quote expired before an invoice was supplied')
-                await asyncio.sleep(0.2)
-            return future.result()
-        finally:
-            self._pending.pop('invoice', None)
+        # To restore post-start wait, comment the raise and uncomment the block below.
+        raise InteractionRequired('kas2sat invoice was not supplied before start')
+        # Commented: post-start invoice wait. kas2sat invoice is collected before Start.
+        # future = asyncio.get_running_loop().create_future()
+        # self._pending['invoice'] = future
+        # try:
+        #     while not future.done():
+        #         # Quote expiry while waiting for an invoice: abandon and let
+        #         # the orchestrator surface InteractionRequired / cancel.
+        #         valid_until = getattr(self.screen, '_kas2sat_valid_until', 0)
+        #         if valid_until and valid_until < time.time():
+        #             self.abandon()
+        #             raise InteractionRequired('quote expired before an invoice was supplied')
+        #         await asyncio.sleep(0.2)
+        #     return future.result()
+        # finally:
+        #     self._pending.pop('invoice', None)
 
     async def request_preimage(self, invoice, payment_hash=None, timeout=None):
         self._payment_hash = payment_hash

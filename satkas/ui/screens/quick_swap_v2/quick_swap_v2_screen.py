@@ -21,6 +21,7 @@ from kivymd.uix.button import MDButton, MDButtonText, MDButtonIcon
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.textfield import MDTextField, MDTextFieldHintText
 from kivymd.uix.widget import MDWidget
+from kivymd.uix.snackbar import MDSnackbar, MDSnackbarText
 
 from satkas.ui.utils import make_qr
 # from satkas.core.klib.kaddress import decode_address  # used by retired ask_output_address
@@ -30,6 +31,8 @@ from .components import (
     SwapEditor,
     PayoutAddressBar,
     InvoiceField,
+    InvoiceReadButton,
+    InvoiceInputDialog,
     ContractAddressField,
     PaymentField,
     StatusWidget
@@ -76,6 +79,10 @@ class QuickSwapV2Screen(MDScreen):
         self.dialog = None
         # True while the optional contract-funding QR dialog is the active dialog.
         self._is_funding_qr_dialog = False
+        # First full-fund edge this swap; later funded/btc_funded ticks must not
+        # close a QR the user reopened.
+        self._kas_full_fund_seen = False
+        self._btc_full_fund_seen = False
         
         # Track valid_until per direction
         self._kas2sat_valid_until = 0
@@ -83,6 +90,7 @@ class QuickSwapV2Screen(MDScreen):
         self._kas2btc_valid_until = 0
         self._btc2kas_valid_until = 0
         self._resume_saw_swap = False
+        self._invoice_dialog = None
 
         # Initialize controller; interaction is bound once KV has wired ids.
         self.controller = SwapController(
@@ -114,6 +122,7 @@ class QuickSwapV2Screen(MDScreen):
             swap_direction=lambda *_: self.ids.payout_bar.sync_from_editor(editor),
         )
         self.ids.payout_bar.sync_from_editor(editor)
+        editor.validate()
         self._attach_resume_ui()
     
     _RESUME_STATUS = {
@@ -371,6 +380,7 @@ class QuickSwapV2Screen(MDScreen):
                     if quoted:
                         quoted['peer'] = peer
                         editor.apply_quote(quoted)
+                        self._on_quote_applied(quoted)
                     else:
                         editor.clear_quote()
                 else:
@@ -497,33 +507,127 @@ class QuickSwapV2Screen(MDScreen):
         
         return best_peer, best_kas2sat_rate, best_sat2kas_rate
 
-    def apply_invoice_to_preview(self, invoice_data):
-        """
-        Apply parsed invoice during preview phase.
-        Decode is local; quote uses sat_amount only (bolt11 waits until init).
-        """
+    def _quoted_sat_amount(self):
         editor = self.ids.swap_editor
-        invoice_field = self.ids.invoice_field
-        sats = invoice_data.get('amount_sat', 0)
+        return int(
+            (editor.last_quote or {}).get('sat_amount')
+            or round(editor.btc_amount * 1e8)
+            or 0
+        ) or None
 
-        editor.btc_amount = sats / 1e8
-        editor.anchor_field = "btc"
-        editor.last_quote = None
-        editor.calculate_kas_from_btc()
-        editor.get_send_amount_display()
-        editor.get_receive_amount_display()
-        editor.is_fetching_rate = True
+    def _push_dialog_expected(self):
+        dialog = getattr(self, '_invoice_dialog', None)
+        if dialog is not None:
+            dialog.update_expected_sats(self._quoted_sat_amount())
+
+    def close_invoice_dialog(self):
+        dialog = getattr(self, '_invoice_dialog', None)
+        if dialog is not None:
+            dialog.dismiss()
+
+    def _on_quote_applied(self, quoted):
+        """Keep or drop a stored invoice after a fresh quote; update an open dialog."""
+        editor = self.ids.swap_editor
+        field = self.ids.invoice_field
+        sat = int(quoted.get('sat_amount') or 0)
+        if editor.swap_direction == "kas2sat" and field.invoice:
+            if abs(sat - int(field.invoice_sats or 0)) > 1:
+                field.clear_stored()
+                field.info_label_text = (
+                    f"Quote updated: paste/generate an invoice for {sat} sats"
+                )
+        self._push_dialog_expected()
         editor.validate()
 
-        invoice_field.invoice = invoice_data['invoice_str']
-        invoice_field.is_invoice_validated = True
-        invoice_field.info_label_text = f"Invoice set: {sats} sats"
-        invoice_field.swap_direction = "kas2sat"
-        invoice_field.buttons_row_visible = False
+    def apply_invoice(self, invoice_data, honor_invoice=False):
+        editor = self.ids.swap_editor
+        field = self.ids.invoice_field
+        invoice_str = invoice_data.get('invoice_str') or ''
+        if editor.swap_direction != "kas2sat" or editor.is_collapsed or not invoice_str:
+            return False
+        sats = int(invoice_data.get('amount_sat', 0) or 0)
+        expected = self._quoted_sat_amount() or 0
+        matches = expected > 0 and abs(expected - sats) <= 1
+        kas_first = (
+            not honor_invoice
+            and editor.anchor_field == "kas"
+            and editor.kas_amount > 0
+        )
+        if kas_first and expected > 0 and not matches:
+            return False
+        if honor_invoice or (not kas_first and not matches):
+            editor.btc_amount = sats / 1e8
+            editor.anchor_field = "btc"
+            editor.last_quote = None
+            editor.calculate_kas_from_btc()
+            editor.is_fetching_rate = True
+            self.restart_rate_refresh()
+        elif not editor.last_quote:
+            editor.is_fetching_rate = True
+            self.restart_rate_refresh()
 
-        logger.debug(f"Invoice applied to preview: {sats} sats")
-        self.restart_rate_refresh()
-    
+        field.store(invoice_str, sats)
+        field.swap_direction = "kas2sat"
+        editor.get_send_amount_display()
+        editor.get_receive_amount_display()
+        editor.validate()
+        # Commented: post-start invoice wait. kas2sat invoice is collected before Start.
+        # interaction = getattr(getattr(self, 'controller', None), 'interaction', None)
+        # if interaction is not None and interaction.is_waiting('invoice'):
+        #     interaction.answer('invoice', field.invoice)
+        #     field.stop_attention_pulse()
+        #     field.style = "filled"
+        #     field.theme_line_color = "Primary"
+        logger.debug(f"Invoice applied: {sats} sats matches={matches}")
+        return True
+
+    def open_invoice_dialog(self):
+        existing = getattr(self, '_invoice_dialog', None)
+        if existing is not None:
+            existing.dismiss()
+        flavor = getattr(self.app.service_manager, '_preferred_ln_wallet', 'external')
+        expected = self._quoted_sat_amount()
+        dialog = InvoiceInputDialog(
+            on_confirm_callback=self.apply_invoice,
+            expected_sats=expected,
+            wallet_flavor=flavor if flavor in ("lnbits", "lncli") else None,
+            on_generate=self._generate_invoice_from_dialog,
+        )
+        def _clear(_inst, *_):
+            if getattr(self, '_invoice_dialog', None) is dialog:
+                self._invoice_dialog = None
+        dialog.bind(on_dismiss=_clear)
+        self._invoice_dialog = dialog
+        dialog.open()
+
+    def _generate_invoice_from_dialog(self, dialog):
+        asyncio.create_task(self._generate_invoice_from_dialog_async(dialog))
+
+    async def _generate_invoice_from_dialog_async(self, dialog):
+        amount = self._quoted_sat_amount() or 0
+        try:
+            if not amount:
+                raise ValueError("Set an amount first")
+            invoice = await self.app.taker.create_ln_invoice(int(amount))
+            applied = self.apply_invoice({'invoice_str': invoice, 'amount_sat': int(amount)})
+            if getattr(self, '_invoice_dialog', None) is not dialog:
+                return
+            if applied:
+                dialog.dismiss()
+            else:
+                dialog.validation_label.text = "Invoice no longer matches the quote"
+                dialog.validation_label.text_color = (0.8, 0, 0, 1)
+                if dialog.generate_button:
+                    dialog.generate_button.disabled = False
+        except Exception as e:
+            logger.error(f"Failed to generate invoice: {e}")
+            if getattr(self, '_invoice_dialog', None) is not dialog:
+                return
+            dialog.validation_label.text = f"Error generating invoice: {e}"
+            dialog.validation_label.text_color = (0.8, 0, 0, 1)
+            if dialog.generate_button:
+                dialog.generate_button.disabled = False
+
     def start_swap(self):
         if self.resume_active or self.start_in_flight:
             return
@@ -547,29 +651,15 @@ class QuickSwapV2Screen(MDScreen):
                 or quote.get('swap_type') != editor.swap_direction
                 or (quote.get('valid_until') or 0) < time.time()
             ):
-                if editor.anchor_field == "btc" and editor.btc_amount > 0:
-                    q_kas, q_sat = None, round(editor.btc_amount * 1e8)
-                elif editor.kas_amount > 0:
-                    q_kas, q_sat = editor.kas_amount, None
-                elif editor.btc_amount > 0:
-                    q_kas, q_sat = None, round(editor.btc_amount * 1e8)
-                else:
-                    q_kas, q_sat = None, None
-                peer = self.ids.peer_selector.actual_peer or self.app.taker.maker_endpoint
-                quote = None
-                if peer and (q_kas or q_sat):
-                    quote = await self.app.taker.query_quote(
-                        editor.swap_direction,
-                        kas_amount=q_kas,
-                        sat_amount=q_sat,
-                        endpoint=peer,
-                    )
-                    if quote:
-                        quote['peer'] = peer
-                        editor.apply_quote(quote)
-            if not quote:
-                editor.clear_quote()
+                editor.validate()
                 return
+            if editor.swap_direction == "kas2sat":
+                if (
+                    not invoice_field.invoice
+                    or abs(int(quote['sat_amount']) - int(invoice_field.invoice_sats or 0)) > 1
+                ):
+                    editor.validate()
+                    return
 
             logger.info(f"Starting swap: {editor.swap_direction}, KAS: {quote['kas_amount']}, sats: {quote['sat_amount']}, rate: {quote['price']}")
 
@@ -581,6 +671,7 @@ class QuickSwapV2Screen(MDScreen):
 
             editor.collapse()
             committed = True
+            self.close_invoice_dialog()
             editor.get_summary_display()
             self.ids.peer_selector.collapse()
 
@@ -592,6 +683,7 @@ class QuickSwapV2Screen(MDScreen):
 
             invoice_field.swap_direction = editor.swap_direction
             invoice_field.is_ln_wallet_external = self.app.service_manager.ln_wallet_is_external()
+            invoice_field.buttons_row_visible = False
 
             status_widget = self.ids.status_widget
             status_widget.swap_direction = editor.swap_direction
@@ -691,7 +783,6 @@ class QuickSwapV2Screen(MDScreen):
                 status_widget.countdown_text = self._countdown_text(update)
                 if funded > 0:
                     status_widget.status_text = f"Funded: {funded:.4f} KAS"
-                    self._dismiss_funding_dialog()
                     self.ids.contract_field.ids.contract_status_label.text_color = (0.8, 0.8, 0, 1)
                     funded_display = self.ids.swap_editor.format_kas(funded)
                     kas_amount_display = self.ids.swap_editor.format_kas(self.controller.kas_amount)
@@ -704,7 +795,9 @@ class QuickSwapV2Screen(MDScreen):
                     status_widget.status_text = "Waiting for funding..."
 
         elif status == 'funded':
-            self._dismiss_funding_dialog()
+            if not self._kas_full_fund_seen:
+                self._kas_full_fund_seen = True
+                self._dismiss_funding_dialog()
             self.ids.payment_field.stop_attention_pulse()
             self.ids.payment_field.style = "filled"
             self.ids.payment_field.theme_line_color = "Primary"
@@ -755,13 +848,9 @@ class QuickSwapV2Screen(MDScreen):
         elif status == 'completing':
             txid = update.get('txid')
             status_widget.ids.status_info_label.text_color = (0.8, 0.8, 0, 1)
+            status_widget.status_text = "Redeem broadcast — waiting for confirmations..."
             if txid:
-                status_widget.status_text = (
-                    f"Redeem broadcast — waiting for confirmations...\nTXID: {txid}"
-                )
                 status_widget.txid = str(txid)
-            else:
-                status_widget.status_text = "Redeem broadcast — waiting for confirmations..."
             status_widget.countdown_text = ""
             # Broadcast done; promote continues in background. Treat as leave-safe.
             self.swap_final_state = "settling"
@@ -771,11 +860,9 @@ class QuickSwapV2Screen(MDScreen):
         elif status == 'completed':
             status_widget.ids.status_info_label.text_color = (0, 0.8, 0, 1)
             txid = update.get('txid')
+            status_widget.status_text = "Swap completed!"
             if txid:
-                status_widget.status_text = f"Swap completed!\nTXID: {txid}"
                 status_widget.txid = str(txid)
-            else:
-                status_widget.status_text = "Swap completed!"
             status_widget.countdown_text = ""
             self.swap_final_state = "completed"
             status_widget.is_focused = False
@@ -785,13 +872,9 @@ class QuickSwapV2Screen(MDScreen):
         elif status == 'refunding':
             txid = update.get('txid')
             status_widget.ids.status_info_label.text_color = (0.8, 0.8, 0, 1)
+            status_widget.status_text = "Refund broadcast — waiting for confirmations..."
             if txid:
-                status_widget.status_text = (
-                    f"Refund broadcast — waiting for confirmations...\nTXID: {txid}"
-                )
                 status_widget.txid = str(txid)
-            else:
-                status_widget.status_text = "Refund broadcast — waiting for confirmations..."
             status_widget.countdown_text = ""
             status_widget.show_refund = False
             # Broadcast done; promote continues in background. Treat as leave-safe.
@@ -802,11 +885,9 @@ class QuickSwapV2Screen(MDScreen):
         elif status == 'refunded':
             status_widget.ids.status_info_label.text_color = (0.8, 0.8, 0, 1)
             txid = update.get('txid')
+            status_widget.status_text = "Refunded!"
             if txid:
-                status_widget.status_text = f"Refunded!\nTXID: {txid}"
                 status_widget.txid = str(txid)
-            else:
-                status_widget.status_text = "Refunded!"
             status_widget.countdown_text = ""
             status_widget.show_refund = False
             self.swap_final_state = "refunded"
@@ -853,7 +934,6 @@ class QuickSwapV2Screen(MDScreen):
             #     asyncio.create_task(self._refund_onchain_async())
 
         elif status == 'waiting_confirmations':
-            self._dismiss_funding_dialog()
             status_widget.countdown_text = self._countdown_text(update)
             # Detail lives on the status widget; contract field stays "Funded"
             # until confirmations clear (then waiting_counterparty → Confirmed!).
@@ -867,7 +947,9 @@ class QuickSwapV2Screen(MDScreen):
                 status_widget.status_text = "KAS funded — waiting for confirmations..."
 
         elif status == 'btc_funded':
-            self._dismiss_funding_dialog()
+            if not self._btc_full_fund_seen:
+                self._btc_full_fund_seen = True
+                self._dismiss_funding_dialog()
             status_widget.countdown_text = self._countdown_text(update)
             direction = self.controller.swap_direction
             if direction in ('sat2kas', 'btc2kas'):
@@ -952,18 +1034,17 @@ class QuickSwapV2Screen(MDScreen):
 
         invoice = update.get('invoice')
         if invoice and direction in ("sat2kas", "kas2sat"):
-            invoice_field.invoice = invoice
             try:
                 decoded = await self.app.service_manager.ln_wallet_service.decode_invoice(invoice)
                 amount_sats = decoded.get('amount_msat', 0) // 1000
             except Exception:
                 amount_sats = update.get('sat_amount') or self.controller.sat_amount
-            if direction == "sat2kas":
-                invoice_field.info_label_text = f"Invoice received from maker: {amount_sats} sats"
-            else:
-                invoice_field.info_label_text = f"Invoice set: {amount_sats} sats"
-            invoice_field.is_invoice_validated = True
-            invoice_field.buttons_row_visible = False
+            info = (
+                f"Invoice received from maker: {amount_sats} sats"
+                if direction == "sat2kas"
+                else f"Invoice set: {amount_sats} sats"
+            )
+            invoice_field.store(invoice, amount_sats, info)
             invoice_field.stop_attention_pulse()
             invoice_field.style = "filled"
             invoice_field.theme_line_color = "Primary"
@@ -1049,17 +1130,18 @@ class QuickSwapV2Screen(MDScreen):
         status_widget.show()
 
     def prepare_invoice_request(self, sat_amount):
-        """Show the invoice field; generate/paste resolve the interaction future."""
+        """Show the invoice field after Start; invoice was collected in the editor."""
         invoice_field = self.ids.invoice_field
         invoice_field.show()
         if invoice_field.invoice:
             invoice_field.stop_attention_pulse()
             invoice_field.style = "filled"
             invoice_field.theme_line_color = "Primary"
-        else:
-            invoice_field.start_attention_pulse()
-            if invoice_field.info_label_text != "Generating...":
-                invoice_field.info_label_text = f"Waiting for invoice ({sat_amount} sats)..."
+        # Commented: post-start invoice wait. kas2sat invoice is collected before Start.
+        # else:
+        #     invoice_field.start_attention_pulse()
+        #     if invoice_field.info_label_text != "Generating...":
+        #         invoice_field.info_label_text = f"Waiting for invoice ({sat_amount} sats)..."
 
     def prepare_funding_request(self, kind, address, amount):
         """Enable the pay button; a tap answers confirm_funding."""
@@ -1079,44 +1161,35 @@ class QuickSwapV2Screen(MDScreen):
         self.ids.payment_field.show()
         self.show_invoice_qr_popup(invoice, input_preimage=True)
 
-    def generate_invoice(self, amount=None):
-        """Generate invoice with internal LN wallet."""
-        invoice_field = self.ids.invoice_field
-        invoice_field.is_generating = True
-        invoice_field.info_label_text = "Generating..."
-        asyncio.create_task(self._generate_invoice(amount))
-
-    async def _generate_invoice(self, amount=None):
-        """Generate invoice with error handling."""
-        invoice_field = self.ids.invoice_field
-        try:
-            if amount is None:
-                quote = self.ids.swap_editor.last_quote
-                if quote and quote.get('sat_amount'):
-                    amount = int(quote['sat_amount'])
-                elif self.controller.sat_amount:
-                    amount = int(self.controller.sat_amount)
-                else:
-                    amount = round(self.ids.swap_editor.btc_amount * 1e8)
-                logger.debug(f"generating invoice for {amount} sats")
-            invoice = await self.app.taker.create_ln_invoice(amount)
-            invoice_field.invoice = invoice
-            invoice_field.is_invoice_validated = True
-            invoice_field.info_label_text = f"Invoice generated: {amount} sats"
-            invoice_field.is_generating = False
-            if invoice_field.swap_direction == "kas2sat":
-                invoice_field.buttons_row_visible = False
-            if self.controller.interaction and self.controller.interaction.is_waiting('invoice'):
-                self.controller.interaction.answer('invoice', invoice)
-                invoice_field.stop_attention_pulse()
-                invoice_field.style = "filled"
-                invoice_field.theme_line_color = "Primary"
-        except Exception as e:
-            logger.error(f"Failed to generate invoice: {e}")
-            invoice_field.info_label_text = f"Error generating invoice: {str(e)}"
-            invoice_field.is_generating = False
-            import traceback
-            traceback.print_exc()
+    # Commented: post-start invoice wait. kas2sat invoice is collected before Start.
+    # Generate now lives in the editor dialog (_generate_invoice_from_dialog_async).
+    # def generate_invoice(self, amount=None):
+    #     """Fallback generate if the orchestrator is still waiting for an invoice."""
+    #     asyncio.create_task(self._generate_invoice(amount))
+    #
+    # async def _generate_invoice(self, amount=None):
+    #     invoice_field = self.ids.invoice_field
+    #     invoice_field.is_generating = True
+    #     invoice_field.info_label_text = "Generating..."
+    #     try:
+    #         if amount is None:
+    #             quote = self.ids.swap_editor.last_quote
+    #             amount = int(
+    #                 (quote or {}).get('sat_amount')
+    #                 or self.controller.sat_amount
+    #                 or round(self.ids.swap_editor.btc_amount * 1e8)
+    #             )
+    #         invoice = await self.app.taker.create_ln_invoice(amount)
+    #         invoice_field.store(invoice, amount, f"Invoice generated: {amount} sats")
+    #         if self.controller.interaction and self.controller.interaction.is_waiting('invoice'):
+    #             self.controller.interaction.answer('invoice', invoice)
+    #             invoice_field.stop_attention_pulse()
+    #             invoice_field.style = "filled"
+    #             invoice_field.theme_line_color = "Primary"
+    #     except Exception as e:
+    #         logger.error(f"Failed to generate invoice: {e}")
+    #         invoice_field.info_label_text = f"Error generating invoice: {e}"
+    #         invoice_field.is_generating = False
 
     def pay_with_kaspa_wallet(self):
         """Confirm funding; the orchestrator sends the KAS."""
@@ -1302,6 +1375,7 @@ class QuickSwapV2Screen(MDScreen):
             else:
                 self.controller.reset()
         
+        self.close_invoice_dialog()
         # Reset all component properties to defaults
         self.ids.swap_editor.reset()
         self.ids.invoice_field.reset()
@@ -1337,6 +1411,8 @@ class QuickSwapV2Screen(MDScreen):
         self.contract_address_qr_image = None
         self.contract_address_qr_texture = None
         self.contract_address_bip21_qr_texture = None
+        self._kas_full_fund_seen = False
+        self._btc_full_fund_seen = False
         self.output_address = ""
     
     # Commented during phase 5 of the taker/controller integration:
@@ -1630,11 +1706,26 @@ class QuickSwapV2Screen(MDScreen):
         Clipboard.copy(text.strip())
         logger.debug(f"Copied: {text}")
 
+    def show_address_copied_snackbar(self, chain):
+        """Brief confirmation after a contract-address copy."""
+        text = (
+            "Copied Bitcoin address" if chain == "btc" else "Copied Kaspa address"
+        )
+        MDSnackbar(
+            MDSnackbarText(text=text),
+            y=dp(24),
+            pos_hint={"center_x": 0.5},
+            size_hint_x=0.55,
+            ripple_behavior=False,
+            duration=1,
+            auto_dismiss=True,
+        ).open()
+
     def _dismiss_funding_dialog(self):
         """Close the optional funding QR if it is still open.
 
-        Monitoring does not depend on the dialog; this only clears it when
-        on-chain funding (or partial funding) is detected.
+        Monitoring does not depend on the dialog; this only clears it on the
+        first full-fund event (funded / btc_funded).
         """
         if not self._is_funding_qr_dialog or self.dialog is None:
             return

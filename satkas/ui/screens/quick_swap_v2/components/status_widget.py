@@ -25,7 +25,7 @@ class StatusWidget(MDCard):
     swap_direction = StringProperty("kas2sat")
     is_expired = BooleanProperty(False)
     is_funded = BooleanProperty(False)
-    txid = StringProperty("")
+    txid = StringProperty("")  # settlement (redeem/refund) id for copy-to-clipboard
     
     # Refund state
     show_refund = BooleanProperty(False)

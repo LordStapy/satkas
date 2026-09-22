@@ -1,5 +1,6 @@
 
 import asyncio
+import os
 
 from aiohttp_socks import ProxyConnector
 from aiohttp import ClientSession, ClientTimeout
@@ -64,8 +65,14 @@ class TorService(BaseService):
     def config_string(self):
         return f"{self.host}:{self.port}"
 
+    @staticmethod
+    def socks_url(host=None, port=None):
+        host = os.getenv('TOR_HOST') or host or TorService.default_host
+        port = os.getenv('TOR_PORT') or port or TorService.default_port
+        return f"socks5://{host}:{port}"
+
     async def detect(self):
-        socks_url = f"socks5://{self.host}:{self.port}"
+        socks_url = self.socks_url(self.host, self.port)
         # print(socks_url)
         try:
             ProxyConnector.from_url(socks_url, rdns=True)
@@ -78,8 +85,7 @@ class TorService(BaseService):
         return self.is_detected
 
     async def validate(self):
-        socks_url = f"socks5://{self.host}:{self.port}"
-        connector = ProxyConnector.from_url(socks_url, rdns=True)
+        connector = ProxyConnector.from_url(self.socks_url(self.host, self.port), rdns=True)
         timeout = ClientTimeout(total=10.0)
         try:
             async with ClientSession(connector=connector, timeout=timeout) as session:

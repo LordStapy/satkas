@@ -126,18 +126,19 @@
                                 role: "small"
                                 disabled_color: app.theme_cls.onSecondaryContainerColor
 
-                        MDButton:
+                        InvoiceReadButton:
+                            id: invoice_read_button
                             style: "outlined"
                             size_hint_x: 1
                             size_hint_y: None
                             height: dp(56) if root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat" else 0
                             opacity: 1 if root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat" else 0
                             disabled: not (root.ids.swap_editor.is_editing and root.ids.swap_editor.swap_direction == "kas2sat") or root.resume_active or root.start_in_flight
-                            on_release: root.ids.invoice_field.open_invoice_input_dialog(root.apply_invoice_to_preview)
+                            on_release: root.open_invoice_dialog()
                             MDButtonIcon:
                                 icon: "lightning-bolt"
                             MDButtonText:
-                                text: "Read LN Invoice"
+                                text: "Invoice ready · {} sats".format(int(root.ids.invoice_field.invoice_sats)) if root.ids.invoice_field.is_invoice_validated else "Read LN Invoice"
 
                         MDWidget:
                             size_hint_y: None
@@ -163,6 +164,7 @@
 
                     ContractAddressField:
                         id: contract_field
+                        chain: "kas"
                         title_text: "Kaspa Contract"
 
                     MDWidget:
@@ -171,6 +173,7 @@
 
                     ContractAddressField:
                         id: btc_contract_field
+                        chain: "btc"
                         title_text: "BTC Contract"
 
                     MDWidget:

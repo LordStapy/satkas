@@ -26,6 +26,7 @@ from satkas.core.swapper.counterparty import Counterparty
 from satkas.core.swapper.atomic_swap import AtomicSwap
 from satkas.core.swapper.swap_errors import (
     ContractMismatch,
+    InteractionRequired,
     InvoiceInvalid,
     PreimageInvalid,
     SwapError,
@@ -33,6 +34,7 @@ from satkas.core.swapper.swap_errors import (
 )
 from satkas.core.swapper.swap_events import SwapStatus
 from satkas.core.swapper.swap_interaction import CliInteraction, SwapInteraction
+from satkas.core.services.tor_service import TorService
 
 
 logger = logging.getLogger('taker')
@@ -1116,9 +1118,15 @@ class Taker(Counterparty):
         if price is None:
             raise SwapRejected('Quote has no price')
 
-        if self._wallet_is_external('ln'):
-            invoice = await interaction.request_ln_invoice(sat_lock)
-        else:
+        try:
+            # CliInteraction always input(), skip for internal LN wallets.
+            if isinstance(interaction, CliInteraction) and not self._wallet_is_external('ln'):
+                invoice = await self.create_ln_invoice(sat_lock)
+            else:
+                invoice = await interaction.request_ln_invoice(sat_lock)
+        except InteractionRequired:
+            if self._wallet_is_external('ln'):
+                raise
             invoice = await self.create_ln_invoice(sat_lock)
         logger.info(f"Requesting kas2sat swap with sender address {self.address} and invoice {invoice}")
 
@@ -1725,34 +1733,33 @@ class Taker(Counterparty):
         )
         return None
 
-    def _settled(self, status, txid=None, btc_txid=None):
+    def _settled(self, status, spend_txid=None, btc_spend_txid=None):
         """Record a terminal status and drop the swap.
 
         Returns the txid so a flow can hand it back to its caller, which is
         what the legacy methods returned.
         """
         if self.db_swap is not None:
-            if txid is not None:
-                self.db_swap.txid = txid
-            if btc_txid is not None:
-                self.db_swap.btc_txid = btc_txid
-        # Saves the row and drops our handle on it.
-        self.db_set_swap_status(status)
+            self.set_swap_status(
+                self.db_swap, status,
+                spend_txid=spend_txid, btc_spend_txid=btc_spend_txid,
+            )
+            self.db_swap = None
         self.swap = None
-        return txid if txid is not None else btc_txid
+        return spend_txid if spend_txid is not None else btc_spend_txid
 
     async def _settle_broadcast(self, pending_db, pending_event, final_db, chain, on_event,
-                                txid=None, btc_txid=None, addresses=None):
+                                spend_txid=None, btc_spend_txid=None, addresses=None):
         """Mark COMPLETING/REFUNDING and start promote; optionally await it.
 
         By default returns after broadcast (promote runs in background). When
         run_* was called with wait_confirmation=True, await COMPLETED/REFUNDED.
         """
-        watch_txid = txid if chain == 'kas' else btc_txid
+        watch_txid = spend_txid if chain == 'kas' else btc_spend_txid
         await self._report(on_event, pending_event, txid=watch_txid)
         row_id = self.db_swap.id
         # addresses: kas payout for UTXO/DAA only; btc settle is txid-only.
-        self._settled(pending_db, txid=txid, btc_txid=btc_txid)
+        self._settled(pending_db, spend_txid=spend_txid, btc_spend_txid=btc_spend_txid)
         task = self.start_settlement(
             row_id, chain, watch_txid, final_db, on_event=on_event, addresses=addresses,
         )
@@ -1805,8 +1812,8 @@ class Taker(Counterparty):
         logger.info(f"Redeem transaction broadcasted, txid: {txid}")
         return await self._settle_broadcast(
             'COMPLETING', SwapStatus.COMPLETING, 'COMPLETED', chain, on_event,
-            txid=None if is_btc else txid,
-            btc_txid=txid if is_btc else None,
+            spend_txid=None if is_btc else txid,
+            btc_spend_txid=txid if is_btc else None,
             addresses=None if is_btc else [output_address],
         )
 
@@ -1855,7 +1862,7 @@ class Taker(Counterparty):
         logger.info(f"Refund transaction broadcasted, txid: {txid}")
         return await self._settle_broadcast(
             'REFUNDING', SwapStatus.REFUNDING, 'REFUNDED', 'kas',
-            on_event, txid=txid, addresses=[output_address],
+            on_event, spend_txid=txid, addresses=[output_address],
         )
 
     async def _refund_btc(self, on_event=None, interaction=None):
@@ -1906,7 +1913,7 @@ class Taker(Counterparty):
         logger.info(f"BTC refund transaction broadcasted, txid: {txid}")
         return await self._settle_broadcast(
             'REFUNDING', SwapStatus.REFUNDING, 'REFUNDED', 'btc',
-            on_event, btc_txid=txid,
+            on_event, btc_spend_txid=txid,
         )
 
     async def _kas_refundable(self, on_event=None):
@@ -2089,7 +2096,11 @@ class Taker(Counterparty):
         }
         logger.debug(req_msg)
         if endpoint.endswith('onion'):
-            connector = ProxyConnector.from_url('socks5://127.0.0.1:9050', rdns=True)
+            ts = self.sm.tor_service if self.sm else None
+            connector = ProxyConnector.from_url(
+                TorService.socks_url(getattr(ts, 'host', None), getattr(ts, 'port', None)),
+                rdns=True,
+            )
             if not endpoint.startswith('http'):
                 endpoint = f"http://{endpoint}"
         else:
@@ -2143,6 +2154,7 @@ class Taker(Counterparty):
         return True
 
     def db_set_swap_txid(self, txid):
+        """Record a kas funding txid on the live row."""
         if self.db_swap is None:
             return False
         self.db_swap.txid = txid
